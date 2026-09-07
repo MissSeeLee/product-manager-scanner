@@ -74,14 +74,19 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
   }
 
   return (
-    <section>
-      <h2>{isEditing ? "แก้ไขสินค้า" : "เพิ่มสินค้า"}</h2>
+    <section className="card">
+      <h2 className="card-title">
+        {isEditing ? "แก้ไขสินค้า" : "เพิ่มสินค้า"}
+      </h2>
 
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="productName">ชื่อสินค้า</label>
+      <form className="form-grid" onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label className="form-label" htmlFor="productName">
+            ชื่อสินค้า
+          </label>
 
           <input
+            className="form-control"
             id="productName"
             name="productName"
             type="text"
@@ -92,10 +97,13 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
           />
         </div>
 
-        <div>
-          <label htmlFor="brand">ยี่ห้อ</label>
+        <div className="form-group">
+          <label className="form-label" htmlFor="brand">
+            ยี่ห้อ
+          </label>
 
           <input
+            className="form-control"
             id="brand"
             name="brand"
             type="text"
@@ -106,10 +114,13 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
           />
         </div>
 
-        <div>
-          <label htmlFor="partNumber">Part Number</label>
+        <div className="form-group">
+          <label className="form-label" htmlFor="partNumber">
+            Part Number
+          </label>
 
           <input
+            className="form-control"
             id="partNumber"
             name="partNumber"
             type="text"
@@ -120,10 +131,13 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
           />
         </div>
 
-        <div>
-          <label htmlFor="category">หมวดหมู่</label>
+        <div className="form-group">
+          <label className="form-label" htmlFor="category">
+            หมวดหมู่
+          </label>
 
           <input
+            className="form-control"
             id="category"
             name="category"
             type="text"
@@ -133,10 +147,13 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
           />
         </div>
 
-        <div>
-          <label htmlFor="description">รายละเอียด</label>
+        <div className="form-group form-group-full">
+          <label className="form-label" htmlFor="description">
+            รายละเอียด
+          </label>
 
           <textarea
+            className="form-control"
             id="description"
             name="description"
             value={formData.description}
@@ -146,10 +163,18 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
           />
         </div>
 
-        {validationError && <p role="alert">{validationError}</p>}
+        {validationError && (
+          <div className="message message-error form-group-full" role="alert">
+            {validationError}
+          </div>
+        )}
 
-        <div>
-          <button type="submit" disabled={isSubmitting}>
+        <div className="form-actions">
+          <button
+            className="button button-primary"
+            type="submit"
+            disabled={isSubmitting}
+          >
             {isSubmitting
               ? "กำลังบันทึก..."
               : isEditing
@@ -159,6 +184,7 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
 
           {isEditing && (
             <button
+              className="button button-secondary"
               type="button"
               onClick={handleCancel}
               disabled={isSubmitting}

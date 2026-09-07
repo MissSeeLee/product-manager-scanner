@@ -88,28 +88,40 @@ function ProductsPage() {
   }
 
   return (
-    <main>
-      <header>
-        <h1>Product Manager</h1>
-        <p>จัดการข้อมูลสินค้าและรุ่นอุปกรณ์</p>
+    <>
+      <header className="page-header">
+        <h1 className="page-title">จัดการสินค้า</h1>
+
+        <p className="page-description">
+          จัดการข้อมูลสินค้า รุ่น ยี่ห้อ และ Part Number
+        </p>
       </header>
 
-      {errorMessage && <p role="alert">{errorMessage}</p>}
+      {errorMessage && (
+        <div className="message message-error" role="alert">
+          {errorMessage}
+        </div>
+      )}
 
-      {successMessage && <p role="status">{successMessage}</p>}
+      {successMessage && (
+        <div className="message message-success" role="status">
+          {successMessage}
+        </div>
+      )}
 
       <ProductForm
+        key={editingProduct?.id ?? "new"}
         editingProduct={editingProduct}
         onSubmit={handleSubmitProduct}
         onCancel={handleCancelEdit}
       />
 
       {isLoading ? (
-        <p>กำลังโหลดรายการสินค้า...</p>
+        <div className="card">กำลังโหลดรายการสินค้า...</div>
       ) : (
         <ProductTable products={products} onEdit={handleEdit} />
       )}
-    </main>
+    </>
   );
 }
 

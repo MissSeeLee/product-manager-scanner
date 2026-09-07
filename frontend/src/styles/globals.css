@@ -1,0 +1,421 @@
+:root {
+  font-family:
+    Inter,
+    "Noto Sans Thai",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  color: #e8edf5;
+  background: #0f1117;
+
+  --bg: #0f1117;
+  --surface: #161922;
+  --surface-2: #1d212c;
+  --surface-3: #252a36;
+
+  --border: #2d3341;
+
+  --text: #e8edf5;
+  --text-muted: #9ba6b7;
+
+  --primary: #5b8cff;
+  --primary-hover: #729dff;
+
+  --danger: #ff6b6b;
+  --success: #42c986;
+  --warning: #f4bd50;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ---------- App Shell ---------- */
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 24px 16px;
+
+  background: #11141b;
+  border-right: 1px solid var(--border);
+}
+
+.brand {
+  margin-bottom: 32px;
+  padding: 0 12px;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.brand-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nav-link {
+  padding: 10px 12px;
+
+  border-radius: var(--radius-sm);
+
+  color: var(--text-muted);
+  text-decoration: none;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.nav-link:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.nav-link.active {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.app-main {
+  min-width: 0;
+}
+
+.topbar {
+  height: 64px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 32px;
+
+  border-bottom: 1px solid var(--border);
+  background: rgba(15, 17, 23, 0.85);
+}
+
+.topbar-title {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.page-container {
+  width: 100%;
+  max-width: 1440px;
+
+  margin: 0 auto;
+  padding: 32px;
+}
+
+/* ---------- Page ---------- */
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.page-description {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+  margin-bottom: 24px;
+  padding: 24px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+
+  box-shadow: var(--shadow);
+}
+
+.card-title {
+  margin: 0 0 20px;
+  font-size: 18px;
+}
+
+/* ---------- Form ---------- */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group-full {
+  grid-column: 1 / -1;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.form-control {
+  width: 100%;
+  min-height: 42px;
+
+  padding: 10px 12px;
+
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+
+  background: var(--surface-2);
+  color: var(--text);
+
+  outline: none;
+}
+
+.form-control:focus {
+  border-color: var(--primary);
+}
+
+textarea.form-control {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.form-actions {
+  grid-column: 1 / -1;
+
+  display: flex;
+  gap: 10px;
+
+  margin-top: 4px;
+}
+
+/* ---------- Buttons ---------- */
+
+.button {
+  min-height: 40px;
+  padding: 8px 16px;
+
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+
+  font-weight: 600;
+}
+
+.button-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.button-secondary {
+  background: var(--surface-3);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: #303645;
+}
+
+/* ---------- Messages ---------- */
+
+.message {
+  margin-bottom: 20px;
+  padding: 12px 14px;
+
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+}
+
+.message-error {
+  border-color: rgba(255, 107, 107, 0.45);
+  background: rgba(255, 107, 107, 0.08);
+  color: #ffaaaa;
+}
+
+.message-success {
+  border-color: rgba(66, 201, 134, 0.45);
+  background: rgba(66, 201, 134, 0.08);
+  color: #7fe0ad;
+}
+
+/* ---------- Table ---------- */
+
+.table-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.table-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 14px 16px;
+
+  text-align: left;
+  vertical-align: middle;
+
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table th {
+  font-size: 13px;
+  font-weight: 600;
+
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+
+.data-table td {
+  font-size: 14px;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.empty-state {
+  padding: 36px 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav {
+    flex-direction: row;
+  }
+
+  .page-container {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: 0 20px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-group-full,
+  .form-actions {
+    grid-column: auto;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .card {
+    padding: 18px;
+  }
+}
