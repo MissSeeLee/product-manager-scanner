@@ -1,23 +1,47 @@
-import {
-  createBrowserRouter,
-  Navigate,
-} from "react-router-dom"
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
-import App from "./App"
-import ProductsPage from "../features/products/pages/ProductsPage"
+import App from "./App";
 
-export const router = createBrowserRouter([
+import ProductsPage from "../features/products/pages/ProductsPage";
+
+import InventoryPage from "../features/inventory/pages/InventoryPage";
+
+import InventoryDetailPage from "../features/inventory/pages/InventoryDetailPage";
+
+import ScannerPage from "../features/scanner/pages/ScannerPage";
+
+const router = createBrowserRouter([
   {
+    path: "/",
     element: <App />,
+
     children: [
       {
-        path: "/",
+        index: true,
         element: <Navigate to="/products" replace />,
       },
+
       {
-        path: "/products",
+        path: "products",
         element: <ProductsPage />,
+      },
+
+      {
+        path: "inventory",
+        element: <InventoryPage />,
+      },
+
+      {
+        path: "inventory/:id",
+        element: <InventoryDetailPage />,
+      },
+
+      {
+        path: "scanner",
+        element: <ScannerPage />,
       },
     ],
   },
-])
+]);
+
+export default router;
