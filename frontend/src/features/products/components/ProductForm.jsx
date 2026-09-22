@@ -51,7 +51,10 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
     };
 
     if (!payload.productName || !payload.brand || !payload.partNumber) {
-      setValidationError("กรุณากรอกชื่อสินค้า ยี่ห้อ และ Part Number ให้ครบ");
+      setValidationError(
+        "กรุณากรอกชื่อรุ่น ยี่ห้อ และ Part Number ให้ครบ",
+      );
+
       return;
     }
 
@@ -69,20 +72,25 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
     }
   }
 
-  function handleCancel() {
-    onCancel?.();
-  }
-
   return (
     <section className="card">
+      <span className="section-kicker">
+        {isEditing ? "EDIT MODEL" : "NEW MODEL"}
+      </span>
+
       <h2 className="card-title">
-        {isEditing ? "แก้ไขสินค้า" : "เพิ่มสินค้า"}
+        {isEditing ? "แก้ไขรุ่นสินค้า" : "สร้างรุ่นสินค้า"}
       </h2>
+
+      <p className="page-description">
+        รุ่นสินค้าเป็นข้อมูลแม่แบบที่อุปกรณ์หลายชิ้นสามารถใช้ร่วมกัน
+        และไม่มี Serial Number
+      </p>
 
       <form className="form-grid" onSubmit={handleSubmit}>
         <div className="form-group">
           <label className="form-label" htmlFor="productName">
-            ชื่อสินค้า
+            ชื่อรุ่น
           </label>
 
           <input
@@ -149,7 +157,7 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
 
         <div className="form-group form-group-full">
           <label className="form-label" htmlFor="description">
-            รายละเอียด
+            รายละเอียดรุ่น
           </label>
 
           <textarea
@@ -164,7 +172,10 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
         </div>
 
         {validationError && (
-          <div className="message message-error form-group-full" role="alert">
+          <div
+            className="message message-error form-group-full"
+            role="alert"
+          >
             {validationError}
           </div>
         )}
@@ -179,14 +190,14 @@ function ProductForm({ editingProduct = null, onSubmit, onCancel }) {
               ? "กำลังบันทึก..."
               : isEditing
                 ? "บันทึกการแก้ไข"
-                : "เพิ่มสินค้า"}
+                : "บันทึกรุ่นสินค้า"}
           </button>
 
-          {isEditing && (
+          {onCancel && (
             <button
               className="button button-secondary"
               type="button"
-              onClick={handleCancel}
+              onClick={onCancel}
               disabled={isSubmitting}
             >
               ยกเลิก

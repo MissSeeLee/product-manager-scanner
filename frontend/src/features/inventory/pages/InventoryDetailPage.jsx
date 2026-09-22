@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getInventoryItemById } from "../api/inventoryApi";
-
 import {
   claimInventory,
   claimReturnInventory,
@@ -11,34 +10,25 @@ import {
   moveInventory,
   replaceInventory,
   retireInventory,
+  returnInventory,
 } from "../api/movementApi";
+import {
+  ACTIONS_BY_STATUS,
+  ACTION_BUTTON_CLASSES,
+  ACTION_LABELS,
+} from "../config/inventoryConfig";
 
 import MovementForm from "../components/MovementForm";
 import MovementTimeline from "../components/MovementTimeline";
 import StatusBadge from "../components/StatusBadge";
 
-const ACTIONS_BY_STATUS = {
-  IN_STOCK: ["ISSUE", "MOVE", "CLAIM", "RETIRE"],
+import { formatDate, formatDateTime } from "../../../shared/lib/formatters";
 
-  IN_USE: ["MOVE", "CLAIM", "RETIRE"],
-
-  CLAIM: ["MOVE", "CLAIM_RETURN", "REPLACED", "RETIRE"],
-
-  REPLACED: [],
-  RETIRED: [],
-};
-
-const ACTION_LABELS = {
-  ISSUE: "เบิกใช้งาน",
-  MOVE: "ย้ายตำแหน่ง",
-  CLAIM: "ส่งเคลม",
-  CLAIM_RETURN: "รับคืนจากเคลม",
-  REPLACED: "เปลี่ยนอุปกรณ์",
-  RETIRE: "ปลดระวาง",
-};
+import "../styles/inventoryDetail.css";
 
 const MOVEMENT_HANDLERS = {
   ISSUE: issueInventory,
+  RETURN: returnInventory,
   MOVE: moveInventory,
   CLAIM: claimInventory,
   CLAIM_RETURN: claimReturnInventory,
@@ -46,38 +36,29 @@ const MOVEMENT_HANDLERS = {
   RETIRE: retireInventory,
 };
 
-function formatDate(value) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
-}
-
 async function fetchDetail(id) {
-  const [itemData, historyData] = await Promise.all([
+  const [item, movements] = await Promise.all([
     getInventoryItemById(id),
     getMovementHistory(id),
   ]);
 
-  const movements = Array.isArray(historyData)
-    ? historyData
-    : (historyData?.movements ?? []);
+  return { item, movements };
+}
 
-  return {
-    item: itemData,
-    movements,
-  };
+function formatWarrantyPeriod(start, end) {
+  if (!start && !end) {
+    return "ไม่ระบุ";
+  }
+
+  if (start && end) {
+    return `${formatDate(start)} – ${formatDate(end)}`;
+  }
+
+  if (start) {
+    return `เริ่ม ${formatDate(start)}`;
+  }
+
+  return `สิ้นสุด ${formatDate(end)}`;
 }
 
 function InventoryDetailPage() {
@@ -85,15 +66,12 @@ function InventoryDetailPage() {
 
   const [item, setItem] = useState(null);
   const [movements, setMovements] = useState([]);
-
   const [selectedAction, setSelectedAction] = useState(null);
 
   const [loading, setLoading] = useState(true);
-
   const [actionLoading, setActionLoading] = useState(false);
 
   const [error, setError] = useState("");
-
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
@@ -103,12 +81,10 @@ function InventoryDetailPage() {
       try {
         const data = await fetchDetail(id);
 
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          setItem(data.item);
+          setMovements(data.movements);
         }
-
-        setItem(data.item);
-        setMovements(data.movements);
       } catch (err) {
         if (!cancelled) {
           setError(err.message || "ไม่สามารถโหลดข้อมูลอุปกรณ์ได้");
@@ -134,10 +110,6 @@ function InventoryDetailPage() {
   }
 
   async function handleMovementSubmit(data) {
-    if (!selectedAction) {
-      return;
-    }
-
     const handler = MOVEMENT_HANDLERS[selectedAction];
 
     if (!handler) {
@@ -150,14 +122,11 @@ function InventoryDetailPage() {
 
     try {
       const result = await handler(id, data);
-
       const refreshed = await fetchDetail(id);
 
       setItem(refreshed.item);
       setMovements(refreshed.movements);
-
       setSelectedAction(null);
-
       setSuccessMessage(result?.message || "ดำเนินการเรียบร้อย");
     } catch (err) {
       setError(err.message || "ไม่สามารถดำเนินการได้");
@@ -167,16 +136,15 @@ function InventoryDetailPage() {
   }
 
   if (loading) {
-    return <div className="card">กำลังโหลดข้อมูล...</div>;
+    return <div className="card">กำลังโหลดข้อมูลอุปกรณ์...</div>;
   }
 
   if (!item) {
     return (
       <>
         {error && <div className="message message-error">{error}</div>}
-
         <Link to="/inventory" className="button button-secondary">
-          กลับหน้า Inventory
+          กลับหน้ารายการอุปกรณ์
         </Link>
       </>
     );
@@ -186,18 +154,23 @@ function InventoryDetailPage() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <Link to="/inventory" className="button button-secondary">
-            ← กลับ
-          </Link>
+      <div className="asset-detail-hero">
+        <Link to="/inventory" className="text-link asset-detail-back">
+          ← รายการอุปกรณ์
+        </Link>
 
-          <h1>{item.serial_number}</h1>
-
-          <p className="text-muted">รายละเอียดอุปกรณ์</p>
+        <div className="asset-title-row">
+          <h1 className="page-title serial-text">{item.serial_number}</h1>
+          <StatusBadge status={item.current_status} />
         </div>
 
-        <StatusBadge status={item.current_status} />
+        <div className="asset-meta-inline" aria-label="ข้อมูลรุ่นสินค้า">
+          <span>{item.product_name || "ไม่ระบุรุ่น"}</span>
+          <span>{item.brand || "ไม่ระบุยี่ห้อ"}</span>
+          <span className="serial-text">
+            {item.part_number || "ไม่ระบุ Part Number"}
+          </span>
+        </div>
       </div>
 
       {error && <div className="message message-error">{error}</div>}
@@ -206,93 +179,103 @@ function InventoryDetailPage() {
         <div className="message message-success">{successMessage}</div>
       )}
 
-      <section className="card">
-        <h2>ข้อมูลอุปกรณ์</h2>
-
-        <div className="table-wrapper">
-          <table className="data-table">
-            <tbody>
-              <tr>
-                <th>Serial Number</th>
-
-                <td>{item.serial_number}</td>
-              </tr>
-
-              <tr>
-                <th>สินค้า</th>
-
-                <td>{item.product_name || "-"}</td>
-              </tr>
-
-              <tr>
-                <th>ยี่ห้อ</th>
-
-                <td>{item.brand || "-"}</td>
-              </tr>
-
-              <tr>
-                <th>Part Number</th>
-
-                <td>{item.part_number || "-"}</td>
-              </tr>
-
-              <tr>
-                <th>สถานะ</th>
-
-                <td>
-                  <StatusBadge status={item.current_status} />
-                </td>
-              </tr>
-
-              <tr>
-                <th>ตำแหน่ง</th>
-
-                <td>{item.current_location || "-"}</td>
-              </tr>
-
-              <tr>
-                <th>เริ่มประกัน</th>
-
-                <td>{formatDate(item.warranty_start)}</td>
-              </tr>
-
-              <tr>
-                <th>สิ้นสุดประกัน</th>
-
-                <td>{formatDate(item.warranty_end)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="card">
-        <h2>จัดการอุปกรณ์</h2>
-
-        {availableActions.length > 0 ? (
-          <div className="form-actions">
-            {availableActions.map((action) => (
-              <button
-                key={action}
-                type="button"
-                className={
-                  selectedAction === action
-                    ? "button button-primary"
-                    : "button button-secondary"
-                }
-                disabled={actionLoading}
-                onClick={() => handleSelectAction(action)}
-              >
-                {ACTION_LABELS[action]}
-              </button>
-            ))}
+      <div className="asset-detail-layout">
+        <section className="card asset-detail-summary-card">
+          <div className="asset-section-heading">
+            <div>
+              <h2 className="card-title">ข้อมูลอุปกรณ์</h2>
+              <p>ข้อมูลปัจจุบันและข้อมูลอ้างอิงของอุปกรณ์ชิ้นนี้</p>
+            </div>
           </div>
-        ) : (
-          <p className="text-muted">
-            อุปกรณ์นี้สิ้นสุด Lifecycle แล้ว ไม่สามารถทำ Movement เพิ่มได้
-          </p>
-        )}
-      </section>
+
+          <dl className="asset-summary-list">
+            <div className="asset-summary-row">
+              <dt>ตำแหน่งปัจจุบัน</dt>
+              <dd>{item.current_location || "ไม่ระบุ"}</dd>
+            </div>
+
+            <div className="asset-summary-row">
+              <dt>วันที่รับเข้า</dt>
+              <dd>
+                {item.received_at ? formatDate(item.received_at) : "ไม่ระบุ"}
+              </dd>
+            </div>
+
+            <div className="asset-summary-row">
+              <dt>การรับประกัน</dt>
+              <dd>
+                {formatWarrantyPeriod(item.warranty_start, item.warranty_end)}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="asset-subsection">
+            <h3>รุ่นสินค้า</h3>
+
+            <dl className="asset-summary-list asset-summary-list-compact">
+              <div className="asset-summary-row">
+                <dt>ชื่อรุ่น</dt>
+                <dd>{item.product_name || "ไม่ระบุ"}</dd>
+              </div>
+
+              <div className="asset-summary-row">
+                <dt>ยี่ห้อ</dt>
+                <dd>{item.brand || "ไม่ระบุ"}</dd>
+              </div>
+
+              <div className="asset-summary-row">
+                <dt>Part Number</dt>
+                <dd className="serial-text">
+                  {item.part_number || "ไม่ระบุ"}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="asset-record-meta">
+            <span>บันทึกเข้าระบบเมื่อ</span>
+            <strong>
+              {item.created_at ? formatDateTime(item.created_at) : "ไม่ระบุ"}
+            </strong>
+          </div>
+        </section>
+
+        <aside className="card asset-actions-panel">
+          <div className="asset-section-heading">
+            <div>
+              <h2 className="card-title">การดำเนินการ</h2>
+              <p>คำสั่งที่ทำได้จากสถานะปัจจุบัน</p>
+            </div>
+          </div>
+
+          {availableActions.length > 0 ? (
+            <div className="asset-action-list">
+              {availableActions.map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  className={
+                    selectedAction === action
+                      ? `${ACTION_BUTTON_CLASSES[action]} action-selected`
+                      : ACTION_BUTTON_CLASSES[action]
+                  }
+                  disabled={actionLoading}
+                  onClick={() => handleSelectAction(action)}
+                >
+                  {ACTION_LABELS[action]}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="terminal-state">
+              <strong>สิ้นสุด Lifecycle</strong>
+              <span>
+                อุปกรณ์สถานะ {item.current_status} ไม่สามารถทำ Movement เพิ่มได้
+              </span>
+            </div>
+          )}
+        </aside>
+      </div>
 
       {selectedAction && (
         <MovementForm

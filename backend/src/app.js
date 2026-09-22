@@ -1,4 +1,6 @@
 import express from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import pool from "./db.js";
 
@@ -7,6 +9,17 @@ import inventoryRoutes from "./routes/inventory.js";
 import movementRoutes from "./routes/movements.js";
 
 const app = express();
+
+// --------------------------------------------------
+// PATHS
+// --------------------------------------------------
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
+
+const frontendIndexPath = path.join(frontendDistPath, "index.html");
 
 // --------------------------------------------------
 // MIDDLEWARE
@@ -47,7 +60,7 @@ app.get("/api/db-health", async (req, res) => {
 });
 
 // --------------------------------------------------
-// ROUTES
+// API ROUTES
 // --------------------------------------------------
 
 app.use("/api/products", productRoutes);
@@ -64,6 +77,25 @@ app.use("/api", (req, res) => {
   return res.status(404).json({
     code: "API_ROUTE_NOT_FOUND",
     message: "ไม่พบ API ที่ต้องการ",
+  });
+});
+
+// --------------------------------------------------
+// FRONTEND
+// --------------------------------------------------
+
+app.use(
+  express.static(frontendDistPath, {
+    index: false,
+  }),
+);
+
+// React Router SPA fallback
+app.get("/{*splat}", (req, res, next) => {
+  res.sendFile(frontendIndexPath, (error) => {
+    if (error) {
+      next(error);
+    }
   });
 });
 

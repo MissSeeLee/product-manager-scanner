@@ -1,74 +1,65 @@
-function formatDateTime(value) {
-  if (!value) {
-    return "-";
-  }
+import { formatDateTime } from "../../../shared/lib/formatters";
 
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("th-TH", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
+const MOVEMENT_LABELS = {
+  RECEIVE: "รับเข้า",
+  ISSUE: "เบิกใช้งาน",
+  RETURN: "รับคืนเข้าคลัง",
+  MOVE: "ย้ายตำแหน่ง",
+  CLAIM: "ส่งเคลม",
+  CLAIM_RETURN: "รับคืนจากเคลม",
+  REPLACED: "เปลี่ยนอุปกรณ์ทดแทน",
+  RETIRE: "ปลดระวาง",
+};
 
 function MovementTimeline({ movements = [] }) {
-  if (movements.length === 0) {
-    return (
-      <section className="card">
-        <h2>ประวัติการเคลื่อนไหว</h2>
-
-        <div className="empty-state">ยังไม่มีประวัติการเคลื่อนไหว</div>
-      </section>
-    );
-  }
-
   return (
-    <section className="card table-card">
-      <div className="table-header">
-        <h2 className="table-title">ประวัติการเคลื่อนไหว</h2>
-      </div>
+    <section className="card">
+      <span className="section-kicker">MOVEMENT HISTORY</span>
+      <h2 className="card-title">ประวัติการเคลื่อนไหว</h2>
 
-      <div className="table-wrapper">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>วันที่</th>
-              <th>ประเภท</th>
-              <th>จาก</th>
-              <th>ไปยัง</th>
-              <th>ผู้ดำเนินการ</th>
-              <th>Serial ที่เกี่ยวข้อง</th>
-              <th>หมายเหตุ</th>
-            </tr>
-          </thead>
+      {movements.length === 0 ? (
+        <div className="empty-state">ยังไม่มีประวัติการเคลื่อนไหว</div>
+      ) : (
+        <div className="movement-timeline">
+          {movements.map((movement) => (
+            <article className="movement-event" key={movement.id}>
+              <div className="movement-dot" aria-hidden="true" />
+              <div className="movement-event-body">
+                <div className="movement-event-heading">
+                  <strong>
+                    {MOVEMENT_LABELS[movement.movement_type] || movement.movement_type}
+                  </strong>
+                  <time>{formatDateTime(movement.movement_date)}</time>
+                </div>
 
-          <tbody>
-            {movements.map((movement) => (
-              <tr key={movement.id}>
-                <td>{formatDateTime(movement.movement_date)}</td>
+                <div className="movement-event-meta">
+                  {movement.from_location && (
+                    <span>จาก: {movement.from_location}</span>
+                  )}
+                  {movement.to_location && (
+                    <span>ไป: {movement.to_location}</span>
+                  )}
+                  {movement.performed_by && (
+                    <span>ผู้ดำเนินการ: {movement.performed_by}</span>
+                  )}
+                  {movement.distributor && (
+                    <span>ผู้จัดจำหน่าย: {movement.distributor}</span>
+                  )}
+                  {movement.related_serial_number && (
+                    <span>
+                      Serial ที่เกี่ยวข้อง: {movement.related_serial_number}
+                    </span>
+                  )}
+                </div>
 
-                <td>
-                  <strong>{movement.movement_type}</strong>
-                </td>
-
-                <td>{movement.from_location || "-"}</td>
-
-                <td>{movement.to_location || "-"}</td>
-
-                <td>{movement.performed_by || "-"}</td>
-
-                <td>{movement.related_serial_number || "-"}</td>
-
-                <td>{movement.note || "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                {movement.note && (
+                  <p className="movement-note">{movement.note}</p>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -5,25 +5,28 @@ function ProductTable({
   return (
     <section className="card table-card">
       <div className="table-header">
-        <h2 className="table-title">
-          รายการสินค้า
-        </h2>
+        <div>
+          <span className="section-kicker">MODELS</span>
+          <h2 className="table-title">
+            รายการรุ่นสินค้า
+          </h2>
+        </div>
       </div>
 
       {products.length === 0 ? (
         <div className="empty-state">
-          ยังไม่มีสินค้าในระบบ
+          ยังไม่มีรุ่นสินค้าในระบบ
         </div>
       ) : (
         <div className="table-wrapper">
           <table className="data-table">
             <thead>
               <tr>
-                <th>ชื่อสินค้า</th>
+                <th>ชื่อรุ่น</th>
                 <th>ยี่ห้อ</th>
                 <th>Part Number</th>
                 <th>หมวดหมู่</th>
-                <th>รายละเอียด</th>
+                <th>รายละเอียดรุ่น</th>
                 <th>จัดการ</th>
               </tr>
             </thead>
@@ -31,19 +34,26 @@ function ProductTable({
             <tbody>
               {products.map((product) => (
                 <tr key={product.id}>
-                  <td>{product.product_name}</td>
+                  <td>
+                    <div className="table-primary">
+                      {product.product_name}
+                    </div>
+                  </td>
                   <td>{product.brand}</td>
-                  <td>{product.part_number}</td>
-                  <td>{product.category || "-"}</td>
-                  <td>{product.description || "-"}</td>
-
+                  <td>
+                    <span className="part-number">
+                      {product.part_number}
+                    </span>
+                  </td>
+                  <td>{product.category || "ไม่ระบุ"}</td>
+                  <td>{product.description || "ไม่ระบุ"}</td>
                   <td>
                     <button
                       className="button button-secondary"
                       type="button"
                       onClick={() => onEdit?.(product)}
                     >
-                      แก้ไข
+                      แก้ไขรุ่น
                     </button>
                   </td>
                 </tr>
@@ -53,7 +63,7 @@ function ProductTable({
         </div>
       )}
     </section>
-  )
+  );
 }
 
-export default ProductTable
+export default ProductTable;

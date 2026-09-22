@@ -249,49 +249,6 @@ function ScannerPage() {
               {loading ? "กำลังค้นหา..." : "ค้นหาอุปกรณ์"}
             </button>
           </div>
-
-          {lastScan?.benchmark && (
-            <>
-              <div>
-                <span className="text-muted">เวลาในการสแกน</span>
-
-                <strong>
-                  {lastScan.benchmark.elapsedMs
-                    ? `${(lastScan.benchmark.elapsedMs / 1000).toFixed(
-                        2,
-                      )} วินาที`
-                    : "-"}
-                </strong>
-              </div>
-
-              <div>
-                <span className="text-muted">Decode Attempts</span>
-
-                <strong>{lastScan.benchmark.decodeAttempts ?? "-"}</strong>
-              </div>
-
-              <div>
-                <span className="text-muted">Camera Resolution</span>
-
-                <strong>
-                  {lastScan.benchmark.camera?.width &&
-                  lastScan.benchmark.camera?.height
-                    ? `${lastScan.benchmark.camera.width} × ${lastScan.benchmark.camera.height}`
-                    : "-"}
-                </strong>
-              </div>
-
-              <div>
-                <span className="text-muted">Camera FPS</span>
-
-                <strong>
-                  {lastScan.benchmark.camera?.frameRate
-                    ? Math.round(lastScan.benchmark.camera.frameRate)
-                    : "-"}
-                </strong>
-              </div>
-            </>
-          )}
         </form>
       </section>
     </>

@@ -4,51 +4,21 @@ import pool from "../db.js";
 
 const router = express.Router();
 
-// --------------------------------------------------
-// HELPERS
-// --------------------------------------------------
-
 function parseId(value) {
   const id = Number(value);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return null;
-  }
-
-  return id;
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function cleanOptionalText(value) {
+function cleanText(value) {
   if (typeof value !== "string") {
     return null;
   }
 
-  const cleaned = value.trim();
-
-  return cleaned || null;
+  const clean = value.trim();
+  return clean || null;
 }
 
-function cleanNote(value) {
-  if (typeof value !== "string") {
-    return "";
-  }
-
-  return value.trim();
-}
-
-async function rollbackQuietly(client) {
-  if (!client) {
-    return;
-  }
-
-  try {
-    await client.query("ROLLBACK");
-  } catch (error) {
-    console.error("Transaction rollback failed:", error.message);
-  }
-}
-
-async function getLockedInventoryItem(client, id) {
+async function getLockedItem(client, id) {
   const result = await client.query(
     `
       SELECT *
@@ -59,34 +29,119 @@ async function getLockedInventoryItem(client, id) {
     [id],
   );
 
-  return result.rows[0] ?? null;
+  return result.rows[0] || null;
+}
+
+async function rollbackQuietly(client) {
+  try {
+    await client.query("ROLLBACK");
+  } catch (error) {
+    console.error("Movement rollback failed:", error);
+  }
+}
+
+function invalidId(res) {
+  return res.status(400).json({
+    code: "INVALID_INVENTORY_ID",
+    message: "รหัสอุปกรณ์ไม่ถูกต้อง",
+  });
+}
+
+function itemNotFound(res) {
+  return res.status(404).json({
+    code: "INVENTORY_NOT_FOUND",
+    message: "ไม่พบอุปกรณ์ที่ต้องการ",
+  });
+}
+
+function invalidState(res, message) {
+  return res.status(409).json({
+    code: "INVALID_INVENTORY_STATE",
+    message,
+  });
+}
+
+function movementFailed(res, code, message, error) {
+  console.error(code, error);
+
+  return res.status(500).json({
+    code,
+    message,
+  });
+}
+
+async function insertMovement(
+  client,
+  {
+    inventoryItemId,
+    movementType,
+    performedBy,
+    distributor = null,
+    fromLocation = null,
+    toLocation = null,
+    note = "",
+    relatedInventoryItemId = null,
+    movementDate = null,
+  },
+) {
+  const result = await client.query(
+    `
+      INSERT INTO stock_movements (
+        inventory_item_id,
+        movement_type,
+        movement_date,
+        performed_by,
+        distributor,
+        from_location,
+        to_location,
+        note,
+        related_inventory_item_id
+      )
+      VALUES (
+        $1,
+        $2,
+        COALESCE($3::timestamptz, NOW()),
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9
+      )
+      RETURNING *
+    `,
+    [
+      inventoryItemId,
+      movementType,
+      movementDate,
+      cleanText(performedBy),
+      cleanText(distributor),
+      fromLocation,
+      toLocation,
+      typeof note === "string" ? note.trim() : "",
+      relatedInventoryItemId,
+    ],
+  );
+
+  return result.rows[0];
 }
 
 // --------------------------------------------------
-// ISSUE
-// POST /api/inventory-items/:id/issue
-//
-// IN_STOCK → IN_USE
+// ISSUE: IN_STOCK -> IN_USE
 // --------------------------------------------------
-
 router.post("/:id/issue", async (req, res) => {
   const id = parseId(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      code: "INVALID_INVENTORY_ID",
-      message: "รหัสอุปกรณ์ไม่ถูกต้อง",
-    });
+    return invalidId(res);
   }
 
-  const { performedBy, toLocation, note = "" } = req.body;
+  const toLocation = cleanText(req.body?.toLocation);
 
-  const cleanToLocation = toLocation?.trim();
-
-  if (!cleanToLocation) {
+  if (!toLocation) {
     return res.status(400).json({
       code: "LOCATION_REQUIRED",
-      message: "กรุณาระบุตำแหน่งปลายทาง",
+      message: "กรุณาระบุตำแหน่งที่นำอุปกรณ์ไปใช้งาน",
     });
   }
 
@@ -94,52 +149,30 @@ router.post("/:id/issue", async (req, res) => {
 
   try {
     client = await pool.connect();
-
     await client.query("BEGIN");
 
-    const item = await getLockedInventoryItem(client, id);
+    const item = await getLockedItem(client, id);
 
     if (!item) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        code: "INVENTORY_NOT_FOUND",
-        message: "ไม่พบอุปกรณ์ที่ต้องการ",
-      });
+      await rollbackQuietly(client);
+      return itemNotFound(res);
     }
 
     if (item.current_status !== "IN_STOCK") {
-      await client.query("ROLLBACK");
-
-      return res.status(409).json({
-        code: "INVENTORY_NOT_IN_STOCK",
-        message: "อุปกรณ์ต้องอยู่ในคลังก่อนจึงจะสามารถเบิกใช้งานได้",
-      });
+      await rollbackQuietly(client);
+      return invalidState(res, "เบิกใช้งานได้เฉพาะอุปกรณ์ที่อยู่ในคลัง");
     }
 
-    const movementResult = await client.query(
-      `
-        INSERT INTO stock_movements (
-          inventory_item_id,
-          movement_type,
-          performed_by,
-          from_location,
-          to_location,
-          note
-        )
-        VALUES ($1, 'ISSUE', $2, $3, $4, $5)
-        RETURNING *
-      `,
-      [
-        id,
-        cleanOptionalText(performedBy),
-        item.current_location,
-        cleanToLocation,
-        cleanNote(note),
-      ],
-    );
+    const movement = await insertMovement(client, {
+      inventoryItemId: id,
+      movementType: "ISSUE",
+      performedBy: req.body?.performedBy,
+      fromLocation: item.current_location,
+      toLocation,
+      note: req.body?.note,
+    });
 
-    const itemResult = await client.query(
+    const updated = await client.query(
       `
         UPDATE inventory_items
         SET
@@ -149,59 +182,131 @@ router.post("/:id/issue", async (req, res) => {
         WHERE id = $2
         RETURNING *
       `,
-      [cleanToLocation, id],
+      [toLocation, id],
     );
 
     await client.query("COMMIT");
 
     return res.status(201).json({
-      message: "เบิกอุปกรณ์สำเร็จ",
+      message: "เบิกอุปกรณ์ไปใช้งานเรียบร้อย",
       data: {
-        item: itemResult.rows[0],
-        movement: movementResult.rows[0],
+        item: updated.rows[0],
+        movement,
       },
     });
   } catch (error) {
-    await rollbackQuietly(client);
+    if (client) {
+      await rollbackQuietly(client);
+    }
 
-    console.error("Issue inventory item failed:", error);
-
-    return res.status(500).json({
-      code: "INVENTORY_ISSUE_FAILED",
-      message: "ไม่สามารถเบิกอุปกรณ์ได้",
-    });
+    return movementFailed(
+      res,
+      "ISSUE_FAILED",
+      "ไม่สามารถเบิกอุปกรณ์ไปใช้งานได้",
+      error,
+    );
   } finally {
     client?.release();
   }
 });
 
 // --------------------------------------------------
-// MOVE
-// POST /api/inventory-items/:id/move
-//
-// Allowed:
-// IN_STOCK
-// IN_USE
-// CLAIM
-//
-// Status does NOT change.
+// RETURN: IN_USE -> IN_STOCK
 // --------------------------------------------------
+router.post("/:id/return", async (req, res) => {
+  const id = parseId(req.params.id);
 
+  if (!id) {
+    return invalidId(res);
+  }
+
+  const toLocation = cleanText(req.body?.toLocation);
+
+  if (!toLocation) {
+    return res.status(400).json({
+      code: "LOCATION_REQUIRED",
+      message: "กรุณาระบุตำแหน่งที่รับคืนอุปกรณ์",
+    });
+  }
+
+  let client;
+
+  try {
+    client = await pool.connect();
+    await client.query("BEGIN");
+
+    const item = await getLockedItem(client, id);
+
+    if (!item) {
+      await rollbackQuietly(client);
+      return itemNotFound(res);
+    }
+
+    if (item.current_status !== "IN_USE") {
+      await rollbackQuietly(client);
+      return invalidState(res, "รับคืนเข้าคลังได้เฉพาะอุปกรณ์ที่กำลังใช้งาน");
+    }
+
+    const movement = await insertMovement(client, {
+      inventoryItemId: id,
+      movementType: "RETURN",
+      performedBy: req.body?.performedBy,
+      fromLocation: item.current_location,
+      toLocation,
+      note: req.body?.note,
+    });
+
+    const updated = await client.query(
+      `
+        UPDATE inventory_items
+        SET
+          current_status = 'IN_STOCK',
+          current_location = $1,
+          updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+      `,
+      [toLocation, id],
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(201).json({
+      message: "รับคืนอุปกรณ์เข้าคลังเรียบร้อย",
+      data: {
+        item: updated.rows[0],
+        movement,
+      },
+    });
+  } catch (error) {
+    if (client) {
+      await rollbackQuietly(client);
+    }
+
+    return movementFailed(
+      res,
+      "RETURN_FAILED",
+      "ไม่สามารถรับคืนอุปกรณ์เข้าคลังได้",
+      error,
+    );
+  } finally {
+    client?.release();
+  }
+});
+
+// --------------------------------------------------
+// MOVE: status unchanged
+// --------------------------------------------------
 router.post("/:id/move", async (req, res) => {
   const id = parseId(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      code: "INVALID_INVENTORY_ID",
-      message: "รหัสอุปกรณ์ไม่ถูกต้อง",
-    });
+    return invalidId(res);
   }
 
-  const { performedBy, toLocation, note = "" } = req.body;
+  const toLocation = cleanText(req.body?.toLocation);
 
-  const cleanToLocation = toLocation?.trim();
-
-  if (!cleanToLocation) {
+  if (!toLocation) {
     return res.status(400).json({
       code: "LOCATION_REQUIRED",
       message: "กรุณาระบุตำแหน่งปลายทาง",
@@ -212,121 +317,80 @@ router.post("/:id/move", async (req, res) => {
 
   try {
     client = await pool.connect();
-
     await client.query("BEGIN");
 
-    const item = await getLockedInventoryItem(client, id);
+    const item = await getLockedItem(client, id);
 
     if (!item) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        code: "INVENTORY_NOT_FOUND",
-        message: "ไม่พบอุปกรณ์ที่ต้องการ",
-      });
+      await rollbackQuietly(client);
+      return itemNotFound(res);
     }
 
     if (!["IN_STOCK", "IN_USE", "CLAIM"].includes(item.current_status)) {
-      await client.query("ROLLBACK");
-
-      return res.status(409).json({
-        code: "INVENTORY_MOVE_NOT_ALLOWED",
-        message: "สถานะปัจจุบันของอุปกรณ์ไม่อนุญาตให้ย้ายตำแหน่ง",
-      });
+      await rollbackQuietly(client);
+      return invalidState(res, "สถานะปัจจุบันไม่อนุญาตให้ย้ายตำแหน่ง");
     }
 
-    if (item.current_location === cleanToLocation) {
-      await client.query("ROLLBACK");
+    const movement = await insertMovement(client, {
+      inventoryItemId: id,
+      movementType: "MOVE",
+      performedBy: req.body?.performedBy,
+      fromLocation: item.current_location,
+      toLocation,
+      note: req.body?.note,
+    });
 
-      return res.status(409).json({
-        code: "INVENTORY_ALREADY_AT_LOCATION",
-        message: "อุปกรณ์อยู่ที่ตำแหน่งนี้แล้ว",
-      });
-    }
-
-    const movementResult = await client.query(
-      `
-        INSERT INTO stock_movements (
-          inventory_item_id,
-          movement_type,
-          performed_by,
-          from_location,
-          to_location,
-          note
-        )
-        VALUES ($1, 'MOVE', $2, $3, $4, $5)
-        RETURNING *
-      `,
-      [
-        id,
-        cleanOptionalText(performedBy),
-        item.current_location,
-        cleanToLocation,
-        cleanNote(note),
-      ],
-    );
-
-    const itemResult = await client.query(
+    const updated = await client.query(
       `
         UPDATE inventory_items
-        SET
-          current_location = $1,
-          updated_at = NOW()
+        SET current_location = $1, updated_at = NOW()
         WHERE id = $2
         RETURNING *
       `,
-      [cleanToLocation, id],
+      [toLocation, id],
     );
 
     await client.query("COMMIT");
 
     return res.status(201).json({
-      message: "ย้ายตำแหน่งอุปกรณ์สำเร็จ",
+      message: "ย้ายตำแหน่งอุปกรณ์เรียบร้อย",
       data: {
-        item: itemResult.rows[0],
-        movement: movementResult.rows[0],
+        item: updated.rows[0],
+        movement,
       },
     });
   } catch (error) {
-    await rollbackQuietly(client);
+    if (client) {
+      await rollbackQuietly(client);
+    }
 
-    console.error("Move inventory item failed:", error);
-
-    return res.status(500).json({
-      code: "INVENTORY_MOVE_FAILED",
-      message: "ไม่สามารถย้ายตำแหน่งอุปกรณ์ได้",
-    });
+    return movementFailed(
+      res,
+      "MOVE_FAILED",
+      "ไม่สามารถย้ายตำแหน่งอุปกรณ์ได้",
+      error,
+    );
   } finally {
     client?.release();
   }
 });
 
 // --------------------------------------------------
-// CLAIM
-// POST /api/inventory-items/:id/claim
-//
-// IN_STOCK → CLAIM
-// IN_USE   → CLAIM
+// CLAIM: IN_STOCK / IN_USE -> CLAIM
 // --------------------------------------------------
-
 router.post("/:id/claim", async (req, res) => {
   const id = parseId(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      code: "INVALID_INVENTORY_ID",
-      message: "รหัสอุปกรณ์ไม่ถูกต้อง",
-    });
+    return invalidId(res);
   }
 
-  const { performedBy, toLocation, note = "" } = req.body;
+  const toLocation = cleanText(req.body?.toLocation);
 
-  const cleanToLocation = toLocation?.trim();
-
-  if (!cleanToLocation) {
+  if (!toLocation) {
     return res.status(400).json({
       code: "LOCATION_REQUIRED",
-      message: "กรุณาระบุสถานที่ส่งเคลม",
+      message: "กรุณาระบุปลายทางการเคลม",
     });
   }
 
@@ -334,52 +398,30 @@ router.post("/:id/claim", async (req, res) => {
 
   try {
     client = await pool.connect();
-
     await client.query("BEGIN");
 
-    const item = await getLockedInventoryItem(client, id);
+    const item = await getLockedItem(client, id);
 
     if (!item) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        code: "INVENTORY_NOT_FOUND",
-        message: "ไม่พบอุปกรณ์ที่ต้องการ",
-      });
+      await rollbackQuietly(client);
+      return itemNotFound(res);
     }
 
     if (!["IN_STOCK", "IN_USE"].includes(item.current_status)) {
-      await client.query("ROLLBACK");
-
-      return res.status(409).json({
-        code: "INVENTORY_CLAIM_NOT_ALLOWED",
-        message: "สถานะปัจจุบันของอุปกรณ์ไม่สามารถส่งเคลมได้",
-      });
+      await rollbackQuietly(client);
+      return invalidState(res, "สถานะปัจจุบันไม่อนุญาตให้ส่งเคลม");
     }
 
-    const movementResult = await client.query(
-      `
-        INSERT INTO stock_movements (
-          inventory_item_id,
-          movement_type,
-          performed_by,
-          from_location,
-          to_location,
-          note
-        )
-        VALUES ($1, 'CLAIM', $2, $3, $4, $5)
-        RETURNING *
-      `,
-      [
-        id,
-        cleanOptionalText(performedBy),
-        item.current_location,
-        cleanToLocation,
-        cleanNote(note),
-      ],
-    );
+    const movement = await insertMovement(client, {
+      inventoryItemId: id,
+      movementType: "CLAIM",
+      performedBy: req.body?.performedBy,
+      fromLocation: item.current_location,
+      toLocation,
+      note: req.body?.note,
+    });
 
-    const itemResult = await client.query(
+    const updated = await client.query(
       `
         UPDATE inventory_items
         SET
@@ -389,59 +431,50 @@ router.post("/:id/claim", async (req, res) => {
         WHERE id = $2
         RETURNING *
       `,
-      [cleanToLocation, id],
+      [toLocation, id],
     );
 
     await client.query("COMMIT");
 
     return res.status(201).json({
-      message: "ส่งอุปกรณ์เคลมสำเร็จ",
+      message: "ส่งอุปกรณ์เคลมเรียบร้อย",
       data: {
-        item: itemResult.rows[0],
-        movement: movementResult.rows[0],
+        item: updated.rows[0],
+        movement,
       },
     });
   } catch (error) {
-    await rollbackQuietly(client);
+    if (client) {
+      await rollbackQuietly(client);
+    }
 
-    console.error("Claim inventory item failed:", error);
-
-    return res.status(500).json({
-      code: "INVENTORY_CLAIM_FAILED",
-      message: "ไม่สามารถส่งอุปกรณ์เคลมได้",
-    });
+    return movementFailed(
+      res,
+      "CLAIM_FAILED",
+      "ไม่สามารถส่งอุปกรณ์เคลมได้",
+      error,
+    );
   } finally {
     client?.release();
   }
 });
 
 // --------------------------------------------------
-// CLAIM RETURN
-// POST /api/inventory-items/:id/claim-return
-//
-// CLAIM → IN_STOCK
-//
-// Same Serial Number returns.
+// CLAIM RETURN: CLAIM -> IN_STOCK
 // --------------------------------------------------
-
 router.post("/:id/claim-return", async (req, res) => {
   const id = parseId(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      code: "INVALID_INVENTORY_ID",
-      message: "รหัสอุปกรณ์ไม่ถูกต้อง",
-    });
+    return invalidId(res);
   }
 
-  const { performedBy, toLocation, note = "" } = req.body;
+  const toLocation = cleanText(req.body?.toLocation);
 
-  const cleanToLocation = toLocation?.trim();
-
-  if (!cleanToLocation) {
+  if (!toLocation) {
     return res.status(400).json({
       code: "LOCATION_REQUIRED",
-      message: "กรุณาระบุตำแหน่งที่รับอุปกรณ์กลับ",
+      message: "กรุณาระบุตำแหน่งรับคืนจากเคลม",
     });
   }
 
@@ -449,205 +482,138 @@ router.post("/:id/claim-return", async (req, res) => {
 
   try {
     client = await pool.connect();
-
     await client.query("BEGIN");
 
-    const item = await getLockedInventoryItem(client, id);
+    const item = await getLockedItem(client, id);
 
     if (!item) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        code: "INVENTORY_NOT_FOUND",
-        message: "ไม่พบอุปกรณ์ที่ต้องการ",
-      });
+      await rollbackQuietly(client);
+      return itemNotFound(res);
     }
 
     if (item.current_status !== "CLAIM") {
-      await client.query("ROLLBACK");
-
-      return res.status(409).json({
-        code: "INVENTORY_NOT_IN_CLAIM",
-        message: "อุปกรณ์ไม่ได้อยู่ในสถานะเคลม",
-      });
+      await rollbackQuietly(client);
+      return invalidState(res, "รับคืนจากเคลมได้เฉพาะอุปกรณ์ที่อยู่ระหว่างเคลม");
     }
 
-    const movementResult = await client.query(
-      `
-          INSERT INTO stock_movements (
-            inventory_item_id,
-            movement_type,
-            performed_by,
-            from_location,
-            to_location,
-            note
-          )
-          VALUES (
-            $1,
-            'CLAIM_RETURN',
-            $2,
-            $3,
-            $4,
-            $5
-          )
-          RETURNING *
-        `,
-      [
-        id,
-        cleanOptionalText(performedBy),
-        item.current_location,
-        cleanToLocation,
-        cleanNote(note),
-      ],
-    );
+    const movement = await insertMovement(client, {
+      inventoryItemId: id,
+      movementType: "CLAIM_RETURN",
+      performedBy: req.body?.performedBy,
+      fromLocation: item.current_location,
+      toLocation,
+      note: req.body?.note,
+    });
 
-    const itemResult = await client.query(
+    const updated = await client.query(
       `
-          UPDATE inventory_items
-          SET
-            current_status = 'IN_STOCK',
-            current_location = $1,
-            updated_at = NOW()
-          WHERE id = $2
-          RETURNING *
-        `,
-      [cleanToLocation, id],
+        UPDATE inventory_items
+        SET
+          current_status = 'IN_STOCK',
+          current_location = $1,
+          updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+      `,
+      [toLocation, id],
     );
 
     await client.query("COMMIT");
 
     return res.status(201).json({
-      message: "รับอุปกรณ์กลับจากการเคลมสำเร็จ",
+      message: "รับคืนอุปกรณ์จากเคลมเรียบร้อย",
       data: {
-        item: itemResult.rows[0],
-        movement: movementResult.rows[0],
+        item: updated.rows[0],
+        movement,
       },
     });
   } catch (error) {
-    await rollbackQuietly(client);
+    if (client) {
+      await rollbackQuietly(client);
+    }
 
-    console.error("Claim return inventory item failed:", error);
-
-    return res.status(500).json({
-      code: "INVENTORY_CLAIM_RETURN_FAILED",
-      message: "ไม่สามารถรับอุปกรณ์กลับจากการเคลมได้",
-    });
+    return movementFailed(
+      res,
+      "CLAIM_RETURN_FAILED",
+      "ไม่สามารถรับคืนอุปกรณ์จากเคลมได้",
+      error,
+    );
   } finally {
     client?.release();
   }
 });
 
 // --------------------------------------------------
-// REPLACED
-// POST /api/inventory-items/:id/replaced
-//
-// Old item:
-// CLAIM → REPLACED
-//
-// New item:
-// new Serial → IN_STOCK
-//
-// Request:
-// {
-//   "newSerialNumber": "...",
-//   "currentLocation": "...",
-//   "warrantyStart": null,
-//   "warrantyEnd": null,
-//   "performedBy": "...",
-//   "distributor": "...",
-//   "note": "..."
-// }
+// REPLACED: CLAIM -> old REPLACED + new IN_STOCK
 // --------------------------------------------------
-
 router.post("/:id/replaced", async (req, res) => {
   const id = parseId(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      code: "INVALID_INVENTORY_ID",
-      message: "รหัสอุปกรณ์ไม่ถูกต้อง",
-    });
+    return invalidId(res);
   }
 
-  const {
-    newSerialNumber,
-    currentLocation,
-    warrantyStart = null,
-    warrantyEnd = null,
-    performedBy = null,
-    distributor = null,
-    note = "",
-  } = req.body;
+  const newSerialNumber = cleanText(req.body?.newSerialNumber);
+  const toLocation = cleanText(req.body?.toLocation);
+  const warrantyStart = req.body?.warrantyStart || null;
+  const warrantyEnd = req.body?.warrantyEnd || null;
 
-  const cleanSerialNumber = newSerialNumber?.trim();
-
-  const cleanLocation = currentLocation?.trim();
-
-  if (!cleanSerialNumber) {
+  if (!newSerialNumber) {
     return res.status(400).json({
       code: "SERIAL_NUMBER_REQUIRED",
-      message: "กรุณากรอก Serial Number ของอุปกรณ์ทดแทน",
+      message: "กรุณาระบุ Serial Number ของอุปกรณ์ทดแทน",
     });
   }
 
-  if (!cleanLocation) {
+  if (!toLocation) {
     return res.status(400).json({
       code: "LOCATION_REQUIRED",
       message: "กรุณาระบุตำแหน่งของอุปกรณ์ทดแทน",
     });
   }
 
+  if (warrantyStart && warrantyEnd && warrantyEnd < warrantyStart) {
+    return res.status(400).json({
+      code: "INVALID_WARRANTY_RANGE",
+      message: "วันสิ้นสุดประกันต้องไม่มาก่อนวันเริ่มประกัน",
+    });
+  }
+
   let client;
 
   try {
     client = await pool.connect();
-
     await client.query("BEGIN");
 
-    const oldItem = await getLockedInventoryItem(client, id);
+    const oldItem = await getLockedItem(client, id);
 
     if (!oldItem) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        code: "INVENTORY_NOT_FOUND",
-        message: "ไม่พบอุปกรณ์ที่ต้องการ",
-      });
+      await rollbackQuietly(client);
+      return itemNotFound(res);
     }
 
     if (oldItem.current_status !== "CLAIM") {
-      await client.query("ROLLBACK");
-
-      return res.status(409).json({
-        code: "INVENTORY_REPLACE_NOT_ALLOWED",
-        message: "อุปกรณ์ต้องอยู่ในสถานะเคลมก่อนจึงจะสามารถเปลี่ยนทดแทนได้",
-      });
+      await rollbackQuietly(client);
+      return invalidState(res, "เปลี่ยนอุปกรณ์ทดแทนได้เฉพาะรายการที่อยู่ระหว่างเคลม");
     }
 
     const newItemResult = await client.query(
       `
-          INSERT INTO inventory_items (
-            product_id,
-            serial_number,
-            current_status,
-            current_location,
-            warranty_start,
-            warranty_end
-          )
-          VALUES (
-            $1,
-            $2,
-            'IN_STOCK',
-            $3,
-            $4,
-            $5
-          )
-          RETURNING *
-        `,
+        INSERT INTO inventory_items (
+          product_id,
+          serial_number,
+          current_status,
+          current_location,
+          warranty_start,
+          warranty_end
+        )
+        VALUES ($1, $2, 'IN_STOCK', $3, $4, $5)
+        RETURNING *
+      `,
       [
         oldItem.product_id,
-        cleanSerialNumber,
-        cleanLocation,
+        newSerialNumber,
+        toLocation,
         warrantyStart,
         warrantyEnd,
       ],
@@ -655,95 +621,54 @@ router.post("/:id/replaced", async (req, res) => {
 
     const newItem = newItemResult.rows[0];
 
-    const replacedMovementResult = await client.query(
-      `
-            INSERT INTO stock_movements (
-              inventory_item_id,
-              movement_type,
-              performed_by,
-              from_location,
-              to_location,
-              note,
-              related_inventory_item_id
-            )
-            VALUES (
-              $1,
-              'REPLACED',
-              $2,
-              $3,
-              $4,
-              $5,
-              $6
-            )
-            RETURNING *
-          `,
-      [
-        oldItem.id,
-        cleanOptionalText(performedBy),
-        oldItem.current_location,
-        cleanLocation,
-        cleanNote(note),
-        newItem.id,
-      ],
-    );
+    const oldMovement = await insertMovement(client, {
+      inventoryItemId: id,
+      movementType: "REPLACED",
+      performedBy: req.body?.performedBy,
+      distributor: req.body?.distributor,
+      fromLocation: oldItem.current_location,
+      toLocation,
+      note: req.body?.note,
+      relatedInventoryItemId: newItem.id,
+    });
 
-    const receiveMovementResult = await client.query(
-      `
-            INSERT INTO stock_movements (
-              inventory_item_id,
-              movement_type,
-              performed_by,
-              distributor,
-              to_location,
-              note,
-              related_inventory_item_id
-            )
-            VALUES (
-              $1,
-              'RECEIVE',
-              $2,
-              $3,
-              $4,
-              $5,
-              $6
-            )
-            RETURNING *
-          `,
-      [
-        newItem.id,
-        cleanOptionalText(performedBy),
-        cleanOptionalText(distributor),
-        cleanLocation,
-        cleanNote(note),
-        oldItem.id,
-      ],
-    );
+    const newReceiveMovement = await insertMovement(client, {
+      inventoryItemId: newItem.id,
+      movementType: "RECEIVE",
+      performedBy: req.body?.performedBy,
+      distributor: req.body?.distributor,
+      toLocation,
+      note: "รับอุปกรณ์ทดแทนจากการเคลม",
+      relatedInventoryItemId: id,
+    });
 
-    const oldItemResult = await client.query(
+    const updatedOldResult = await client.query(
       `
-          UPDATE inventory_items
-          SET
-            current_status = 'REPLACED',
-            updated_at = NOW()
-          WHERE id = $1
-          RETURNING *
-        `,
-      [oldItem.id],
+        UPDATE inventory_items
+        SET
+          current_status = 'REPLACED',
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `,
+      [id],
     );
 
     await client.query("COMMIT");
 
     return res.status(201).json({
-      message: "เปลี่ยนอุปกรณ์ทดแทนสำเร็จ",
+      message: "เปลี่ยนอุปกรณ์ทดแทนเรียบร้อย",
       data: {
-        replacedItem: oldItemResult.rows[0],
-        newItem,
-        replacedMovement: replacedMovementResult.rows[0],
-        receiveMovement: receiveMovementResult.rows[0],
+        item: updatedOldResult.rows[0],
+        replacementItem: newItem,
+        movement: oldMovement,
+        replacementReceiveMovement: newReceiveMovement,
       },
     });
   } catch (error) {
-    await rollbackQuietly(client);
+    if (client) {
+      await rollbackQuietly(client);
+    }
 
     if (error.code === "23505") {
       return res.status(409).json({
@@ -752,53 +677,33 @@ router.post("/:id/replaced", async (req, res) => {
       });
     }
 
-    if (error.code === "23514") {
-      return res.status(400).json({
-        code: "INVALID_REPLACEMENT_DATA",
-        message: "ข้อมูลอุปกรณ์ทดแทนไม่ถูกต้อง",
-      });
-    }
-
-    console.error("Replace inventory item failed:", error);
-
-    return res.status(500).json({
-      code: "INVENTORY_REPLACE_FAILED",
-      message: "ไม่สามารถเปลี่ยนอุปกรณ์ทดแทนได้",
-    });
+    return movementFailed(
+      res,
+      "REPLACEMENT_FAILED",
+      "ไม่สามารถเปลี่ยนอุปกรณ์ทดแทนได้",
+      error,
+    );
   } finally {
     client?.release();
   }
 });
 
 // --------------------------------------------------
-// RETIRE
-// POST /api/inventory-items/:id/retire
-//
-// IN_STOCK
-// IN_USE
-// CLAIM
-//
-// → RETIRED
+// RETIRE: IN_STOCK / IN_USE / CLAIM -> RETIRED
 // --------------------------------------------------
-
 router.post("/:id/retire", async (req, res) => {
   const id = parseId(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      code: "INVALID_INVENTORY_ID",
-      message: "รหัสอุปกรณ์ไม่ถูกต้อง",
-    });
+    return invalidId(res);
   }
 
-  const { performedBy, toLocation, note = "" } = req.body;
+  const toLocation = cleanText(req.body?.toLocation);
 
-  const cleanToLocation = toLocation?.trim();
-
-  if (!cleanToLocation) {
+  if (!toLocation) {
     return res.status(400).json({
       code: "LOCATION_REQUIRED",
-      message: "กรุณาระบุตำแหน่งที่จัดเก็บอุปกรณ์ปลดระวาง",
+      message: "กรุณาระบุตำแหน่งปลดระวาง",
     });
   }
 
@@ -806,89 +711,62 @@ router.post("/:id/retire", async (req, res) => {
 
   try {
     client = await pool.connect();
-
     await client.query("BEGIN");
 
-    const item = await getLockedInventoryItem(client, id);
+    const item = await getLockedItem(client, id);
 
     if (!item) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        code: "INVENTORY_NOT_FOUND",
-        message: "ไม่พบอุปกรณ์ที่ต้องการ",
-      });
+      await rollbackQuietly(client);
+      return itemNotFound(res);
     }
 
     if (!["IN_STOCK", "IN_USE", "CLAIM"].includes(item.current_status)) {
-      await client.query("ROLLBACK");
-
-      return res.status(409).json({
-        code: "INVENTORY_RETIRE_NOT_ALLOWED",
-        message: "สถานะปัจจุบันของอุปกรณ์ไม่สามารถปลดระวางได้",
-      });
+      await rollbackQuietly(client);
+      return invalidState(res, "สถานะปัจจุบันไม่อนุญาตให้ปลดระวาง");
     }
 
-    const movementResult = await client.query(
-      `
-          INSERT INTO stock_movements (
-            inventory_item_id,
-            movement_type,
-            performed_by,
-            from_location,
-            to_location,
-            note
-          )
-          VALUES (
-            $1,
-            'RETIRE',
-            $2,
-            $3,
-            $4,
-            $5
-          )
-          RETURNING *
-        `,
-      [
-        id,
-        cleanOptionalText(performedBy),
-        item.current_location,
-        cleanToLocation,
-        cleanNote(note),
-      ],
-    );
+    const movement = await insertMovement(client, {
+      inventoryItemId: id,
+      movementType: "RETIRE",
+      performedBy: req.body?.performedBy,
+      fromLocation: item.current_location,
+      toLocation,
+      note: req.body?.note,
+    });
 
-    const itemResult = await client.query(
+    const updated = await client.query(
       `
-          UPDATE inventory_items
-          SET
-            current_status = 'RETIRED',
-            current_location = $1,
-            updated_at = NOW()
-          WHERE id = $2
-          RETURNING *
-        `,
-      [cleanToLocation, id],
+        UPDATE inventory_items
+        SET
+          current_status = 'RETIRED',
+          current_location = $1,
+          updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+      `,
+      [toLocation, id],
     );
 
     await client.query("COMMIT");
 
     return res.status(201).json({
-      message: "ปลดระวางอุปกรณ์สำเร็จ",
+      message: "ปลดระวางอุปกรณ์เรียบร้อย",
       data: {
-        item: itemResult.rows[0],
-        movement: movementResult.rows[0],
+        item: updated.rows[0],
+        movement,
       },
     });
   } catch (error) {
-    await rollbackQuietly(client);
+    if (client) {
+      await rollbackQuietly(client);
+    }
 
-    console.error("Retire inventory item failed:", error);
-
-    return res.status(500).json({
-      code: "INVENTORY_RETIRE_FAILED",
-      message: "ไม่สามารถปลดระวางอุปกรณ์ได้",
-    });
+    return movementFailed(
+      res,
+      "RETIRE_FAILED",
+      "ไม่สามารถปลดระวางอุปกรณ์ได้",
+      error,
+    );
   } finally {
     client?.release();
   }
@@ -896,95 +774,49 @@ router.post("/:id/retire", async (req, res) => {
 
 // --------------------------------------------------
 // MOVEMENT HISTORY
-// GET /api/inventory-items/:id/movements
 // --------------------------------------------------
-
 router.get("/:id/movements", async (req, res) => {
   const id = parseId(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      code: "INVALID_INVENTORY_ID",
-      message: "รหัสอุปกรณ์ไม่ถูกต้อง",
-    });
+    return invalidId(res);
   }
 
   try {
     const itemResult = await pool.query(
-      `
-          SELECT
-            inventory_items.id,
-            inventory_items.product_id,
-            inventory_items.serial_number,
-            inventory_items.current_status,
-            inventory_items.current_location,
-
-            products.product_name,
-            products.brand,
-            products.part_number
-
-          FROM inventory_items
-
-          JOIN products
-            ON inventory_items.product_id =
-               products.id
-
-          WHERE inventory_items.id = $1
-        `,
+      `SELECT id FROM inventory_items WHERE id = $1`,
       [id],
     );
 
     if (itemResult.rowCount === 0) {
-      return res.status(404).json({
-        code: "INVENTORY_NOT_FOUND",
-        message: "ไม่พบอุปกรณ์ที่ต้องการ",
-      });
+      return itemNotFound(res);
     }
 
     const movementResult = await pool.query(
       `
-          SELECT
-            stock_movements.id,
-            stock_movements.inventory_item_id,
-            stock_movements.movement_type,
-            stock_movements.movement_date,
-            stock_movements.performed_by,
-            stock_movements.distributor,
-            stock_movements.from_location,
-            stock_movements.to_location,
-            stock_movements.note,
-            stock_movements.related_inventory_item_id,
-
-            related_item.serial_number
-              AS related_serial_number
-
-          FROM stock_movements
-
-          LEFT JOIN inventory_items AS related_item
-            ON stock_movements.related_inventory_item_id =
-               related_item.id
-
-          WHERE stock_movements.inventory_item_id = $1
-
-          ORDER BY
-            stock_movements.movement_date ASC,
-            stock_movements.id ASC
-        `,
+        SELECT
+          stock_movements.*,
+          related.serial_number AS related_serial_number
+        FROM stock_movements
+        LEFT JOIN inventory_items AS related
+          ON stock_movements.related_inventory_item_id = related.id
+        WHERE stock_movements.inventory_item_id = $1
+        ORDER BY
+          stock_movements.movement_date ASC,
+          stock_movements.id ASC
+      `,
       [id],
     );
 
     return res.status(200).json({
-      data: {
-        item: itemResult.rows[0],
-        movements: movementResult.rows,
-      },
+      data: movementResult.rows,
     });
   } catch (error) {
-    console.error("Get inventory movement history failed:", error);
+    console.error("Get movement history failed:", error);
 
     return res.status(500).json({
       code: "MOVEMENT_HISTORY_FAILED",
-      message: "ไม่สามารถโหลดประวัติการเคลื่อนไหวของอุปกรณ์ได้",
+      message: "ไม่สามารถโหลดประวัติการเคลื่อนไหวได้",
     });
   }
 });

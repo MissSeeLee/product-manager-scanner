@@ -1,89 +1,93 @@
-import { request } from "../../../shared/lib/http"
+import { request } from "../../../shared/lib/http";
 
+function buildQuery(params = {}) {
+  const searchParams = new URLSearchParams();
 
-// --------------------------------------------------
-// INVENTORY LIST
-// GET /api/inventory-items
-// --------------------------------------------------
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
 
-export async function getInventoryItems() {
-  const result = await request("/api/inventory-items")
+    searchParams.set(key, String(value));
+  }
 
-  return result?.data ?? []
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function getInventoryItems(params = {}) {
+  return request(`/api/inventory-items${buildQuery(params)}`);
 }
 
 
-// --------------------------------------------------
-// INVENTORY DETAIL
-// GET /api/inventory-items/:id
-// --------------------------------------------------
+export async function getInventorySummary() {
+  const result = await request("/api/inventory-items/summary");
+  return result?.data ?? {
+    total: 0,
+    IN_STOCK: 0,
+    IN_USE: 0,
+    CLAIM: 0,
+    REPLACED: 0,
+    RETIRED: 0,
+  };
+}
+
+export async function getInventoryFilterOptions() {
+  const result = await request("/api/inventory-items/filter-options");
+  return result?.data ?? {
+    statuses: [],
+    locations: [],
+    brands: [],
+  };
+}
 
 export async function getInventoryItemById(id) {
-  const result = await request(
-    `/api/inventory-items/${id}`
-  )
-
-  return result?.data ?? null
+  const result = await request(`/api/inventory-items/${id}`);
+  return result?.data ?? null;
 }
-
-
-// --------------------------------------------------
-// FIND BY SERIAL NUMBER
-// GET /api/inventory-items/serial/:serial
-// --------------------------------------------------
 
 export async function getInventoryItemBySerial(serial) {
-  const cleanSerial = serial.trim()
-
-  const result = await request(
-    `/api/inventory-items/serial/${encodeURIComponent(cleanSerial)}`
-  )
-
-  return result?.data ?? null
+  const encoded = encodeURIComponent(serial);
+  const result = await request(`/api/inventory-items/serial/${encoded}`);
+  return result?.data ?? null;
 }
 
-
-// --------------------------------------------------
-// CREATE INVENTORY ITEM
-// POST /api/inventory-items
-// --------------------------------------------------
-
-export async function createInventoryItem(data) {
+export function createInventoryItem(payload) {
   return request("/api/inventory-items", {
     method: "POST",
-
     headers: {
       "Content-Type": "application/json",
     },
-
-    body: JSON.stringify(data),
-  })
+    body: JSON.stringify(payload),
+  });
 }
 
+export function updateInventoryItem(id, payload) {
+  return request(`/api/inventory-items/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+}
 
-// --------------------------------------------------
-// UPDATE INVENTORY METADATA
-// PUT /api/inventory-items/:id
-//
-// NOTE:
-// status/location ต้องไม่แก้ผ่าน API นี้
-// ต้องใช้ Movement API
-// --------------------------------------------------
+export function validateBulkInventory(rows) {
+  return request("/api/inventory-items/bulk/validate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ rows }),
+  });
+}
 
-export async function updateInventoryItem(
-  id,
-  data
-) {
-  return request(
-    `/api/inventory-items/${id}`,
-    {
-      method: "PUT",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
-      body: JSON.stringify(data),
-    }
-  )
+export function importBulkInventory(rows) {
+  return request("/api/inventory-items/bulk", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ rows }),
+  });
 }

@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
 
   server: {
-    allowedHosts: ["atlas-halifax-americas-reader.trycloudflare.com"],
+    allowedHosts: true,
 
     proxy: {
       "/api": {

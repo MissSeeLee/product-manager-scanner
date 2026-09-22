@@ -1,133 +1,44 @@
-import { request } from "../../../shared/lib/http"
+import { request } from "../../../shared/lib/http";
 
-
-// --------------------------------------------------
-// ISSUE
-// IN_STOCK → IN_USE
-// --------------------------------------------------
-
-export async function issueInventory(id, data) {
-  return request(
-    `/api/inventory-items/${id}/issue`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    }
-  )
+function postMovement(id, action, payload) {
+  return request(`/api/inventory-items/${id}/${action}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 }
 
-
-// --------------------------------------------------
-// MOVE
-// IN_STOCK / IN_USE / CLAIM
-// status ไม่เปลี่ยน
-// --------------------------------------------------
-
-export async function moveInventory(id, data) {
-  return request(
-    `/api/inventory-items/${id}/move`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    }
-  )
+export function issueInventory(id, payload) {
+  return postMovement(id, "issue", payload);
 }
 
-
-// --------------------------------------------------
-// CLAIM
-// IN_STOCK / IN_USE → CLAIM
-// --------------------------------------------------
-
-export async function claimInventory(id, data) {
-  return request(
-    `/api/inventory-items/${id}/claim`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    }
-  )
+export function returnInventory(id, payload) {
+  return postMovement(id, "return", payload);
 }
 
-
-// --------------------------------------------------
-// CLAIM RETURN
-// CLAIM → IN_STOCK
-// --------------------------------------------------
-
-export async function claimReturnInventory(id, data) {
-  return request(
-    `/api/inventory-items/${id}/claim-return`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    }
-  )
+export function moveInventory(id, payload) {
+  return postMovement(id, "move", payload);
 }
 
-
-// --------------------------------------------------
-// REPLACED
-// CLAIM → REPLACED
-// สร้าง Serial ใหม่เป็น IN_STOCK
-// --------------------------------------------------
-
-export async function replaceInventory(id, data) {
-  return request(
-    `/api/inventory-items/${id}/replaced`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    }
-  )
+export function claimInventory(id, payload) {
+  return postMovement(id, "claim", payload);
 }
 
-
-// --------------------------------------------------
-// RETIRE
-// IN_STOCK / IN_USE / CLAIM → RETIRED
-// --------------------------------------------------
-
-export async function retireInventory(id, data) {
-  return request(
-    `/api/inventory-items/${id}/retire`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    }
-  )
+export function claimReturnInventory(id, payload) {
+  return postMovement(id, "claim-return", payload);
 }
 
+export function replaceInventory(id, payload) {
+  return postMovement(id, "replaced", payload);
+}
 
-// --------------------------------------------------
-// MOVEMENT HISTORY
-// --------------------------------------------------
+export function retireInventory(id, payload) {
+  return postMovement(id, "retire", payload);
+}
 
 export async function getMovementHistory(id) {
-  const result = await request(
-    `/api/inventory-items/${id}/movements`
-  )
-
-  return result?.data ?? {
-    item: null,
-    movements: [],
-  }
+  const result = await request(`/api/inventory-items/${id}/movements`);
+  return result?.data ?? [];
 }

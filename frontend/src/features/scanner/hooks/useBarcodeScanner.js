@@ -255,11 +255,6 @@ export function useBarcodeScanner({ onScan, disabled = false }) {
           camera: cameraInfoRef.current,
         };
 
-        console.log("Scanner benchmark:", {
-          value,
-          format: result.format,
-          ...benchmark,
-        });
 
         releaseCamera();
 
