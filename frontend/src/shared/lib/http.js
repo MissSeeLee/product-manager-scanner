@@ -29,6 +29,10 @@ export async function request(url, options = {}) {
     });
   }
 
+  if (response.status === 401 && url !== "/api/auth/login") {
+    window.dispatchEvent(new Event("assetops:unauthorized"));
+  }
+
   if (response.status === 204) {
     return null;
   }

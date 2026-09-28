@@ -196,6 +196,10 @@ function AssetExplorerToolbar({
       "warranty",
       `ประกัน: ${WARRANTY_LABELS[query.warranty] || query.warranty}`,
     ],
+    query.returnDue && [
+      "returnDue",
+      query.returnDue === "today" ? "กำหนดคืน: วันนี้" : "กำหนดคืน: เกินกำหนด",
+    ],
   ].filter(Boolean);
 
   return (

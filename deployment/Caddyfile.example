@@ -1,0 +1,57 @@
+# AssetOps edge template.
+# Replace hostnames and PASTE_CADDY_HASH_HERE before production use.
+# Generate the manager password hash with: caddy hash-password
+#
+# IMPORTANT:
+# - Express :3001 must not be publicly reachable.
+# - PostgreSQL must not be publicly reachable.
+# - Public hostname receives only /api/public/*.
+
+assets.example.com {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Frame-Options "DENY"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+
+    @publicApi path /api/public/*
+    handle @publicApi {
+        @unsafe not method GET HEAD
+        respond @unsafe 405
+
+        reverse_proxy 127.0.0.1:3001
+    }
+
+    @otherApi path /api/*
+    handle @otherApi {
+        respond 404
+    }
+
+    handle {
+        root * /srv/assetops/viewer
+        try_files {path} /index.html
+        file_server
+    }
+}
+
+ops.example.com {
+    encode zstd gzip
+
+    basic_auth {
+        manager PASTE_CADDY_HASH_HERE
+    }
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Frame-Options "DENY"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+        Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+    }
+
+    reverse_proxy 127.0.0.1:3001
+}

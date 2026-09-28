@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import {
-  getInventoryItems,
-  getInventorySummary,
-} from "../../inventory/api/inventoryApi";
-import StatusBadge from "../../inventory/components/StatusBadge";
+import { getInventorySummary } from "../../inventory/api/inventoryApi";
+import { getOperationsSummary } from "../../operations/api/operationsApi";
+import { OPERATION_CONFIG } from "../../operations/operationConfig";
+import { formatDateTime } from "../../../shared/lib/formatters";
 import {
   FeedbackMessage,
   LoadingState,
@@ -20,7 +19,12 @@ function DashboardPage() {
     REPLACED: 0,
     RETIRED: 0,
   });
-  const [recentItems, setRecentItems] = useState([]);
+  const [operationsSummary, setOperationsSummary] = useState({
+    overdue: 0,
+    dueToday: 0,
+    claim: 0,
+    recent: [],
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -32,19 +36,14 @@ function DashboardPage() {
         setLoading(true);
         setError("");
 
-        const [summaryData, recentResult] = await Promise.all([
+        const [inventoryData, operationData] = await Promise.all([
           getInventorySummary(),
-          getInventoryItems({
-            sort: "updated_at",
-            order: "desc",
-            limit: 5,
-            offset: 0,
-          }),
+          getOperationsSummary(),
         ]);
 
         if (!cancelled) {
-          setSummary(summaryData);
-          setRecentItems(Array.isArray(recentResult?.data) ? recentResult.data : []);
+          setSummary(inventoryData);
+          setOperationsSummary(operationData);
         }
       } catch (requestError) {
         if (!cancelled) {
@@ -70,21 +69,24 @@ function DashboardPage() {
 
   return (
     <section className="dashboard-page">
-      <div className="hero-panel">
+      <div className="hero-panel dashboard-operation-hero">
         <div>
-          <span className="section-kicker">IT ASSET OPERATIONS</span>
-          <h2 className="hero-title">จัดการอุปกรณ์จากสถานะจริง</h2>
+          <span className="section-kicker">TODAY&apos;S OPERATIONS</span>
+          <h2 className="hero-title">เริ่มงานประจำวันจากตรงนี้</h2>
           <p className="hero-description">
-            ค้นหา สแกน รับเข้า และจัดการ Lifecycle ของอุปกรณ์โดยอ้างอิง Serial Number และ Movement History
+            เบิก คืน และสแกนอุปกรณ์โดยไม่ต้องเปิดรายละเอียดทีละ Serial
           </p>
         </div>
 
-        <div className="hero-actions">
-          <Link to="/scanner" className="button button-primary">
-            สแกนอุปกรณ์
+        <div className="hero-actions dashboard-quick-actions">
+          <Link to="/operations/new?type=ISSUE" className="button button-primary">
+            + เบิกอุปกรณ์
           </Link>
-          <Link to="/inventory" className="button button-secondary">
-            เปิด Asset Explorer
+          <Link to="/operations/new?type=RETURN" className="button button-secondary">
+            รับคืน
+          </Link>
+          <Link to="/scanner" className="button button-secondary">
+            สแกน
           </Link>
         </div>
       </div>
@@ -101,13 +103,13 @@ function DashboardPage() {
         <Link to="/inventory?status=IN_STOCK" className="metric-card">
           <span className="metric-label">อยู่ในคลัง</span>
           <strong className="metric-value">{summary.IN_STOCK}</strong>
-          <span className="metric-meta metric-positive">พร้อมใช้งาน</span>
+          <span className="metric-meta metric-positive">พร้อมเบิกใช้งาน</span>
         </Link>
 
         <Link to="/inventory?status=IN_USE" className="metric-card">
           <span className="metric-label">กำลังใช้งาน</span>
           <strong className="metric-value">{summary.IN_USE}</strong>
-          <span className="metric-meta">Active deployment</span>
+          <span className="metric-meta">อยู่กับผู้รับผิดชอบ / งาน</span>
         </Link>
 
         <Link to="/inventory?status=CLAIM" className="metric-card">
@@ -123,37 +125,38 @@ function DashboardPage() {
         <section className="card dashboard-panel">
           <div className="panel-heading">
             <div>
-              <span className="section-kicker">ATTENTION</span>
-              <h3 className="panel-title">สถานะที่ควรตรวจสอบ</h3>
+              <span className="section-kicker">ACTION REQUIRED</span>
+              <h3 className="panel-title">สิ่งที่ควรจัดการ</h3>
             </div>
+            <Link to="/operations" className="text-link">เปิดศูนย์เบิก / คืน</Link>
           </div>
 
           <div className="attention-list">
+            <Link to="/inventory?status=IN_USE&sort=expected_return_date&order=asc" className="attention-row attention-row-link">
+              <div className="attention-icon attention-danger">!</div>
+              <div className="attention-copy">
+                <strong>เกินกำหนดคืน</strong>
+                <span>เรียงอุปกรณ์ที่ควรติดตามคืนก่อน</span>
+              </div>
+              <strong className="attention-value">{operationsSummary.overdue}</strong>
+            </Link>
+
+            <Link to="/operations" className="attention-row attention-row-link">
+              <div className="attention-icon attention-warning">T</div>
+              <div className="attention-copy">
+                <strong>ครบกำหนดวันนี้</strong>
+                <span>เตรียมรับคืนหรือติดต่อผู้รับผิดชอบ</span>
+              </div>
+              <strong className="attention-value">{operationsSummary.dueToday}</strong>
+            </Link>
+
             <Link to="/inventory?status=CLAIM" className="attention-row attention-row-link">
-              <div className="attention-icon attention-warning">!</div>
+              <div className="attention-icon attention-warning">C</div>
               <div className="attention-copy">
                 <strong>อยู่ระหว่างเคลม</strong>
-                <span>รอรับคืน เปลี่ยนทดแทน หรือปลดระวาง</span>
+                <span>ติดตามรับคืน เปลี่ยนทดแทน หรือปลดระวาง</span>
               </div>
-              <strong className="attention-value">{summary.CLAIM}</strong>
-            </Link>
-
-            <Link to="/inventory?status=REPLACED" className="attention-row attention-row-link">
-              <div className="attention-icon">R</div>
-              <div className="attention-copy">
-                <strong>ถูกเปลี่ยนทดแทน</strong>
-                <span>Terminal state เก็บไว้เพื่อประวัติ</span>
-              </div>
-              <strong className="attention-value">{summary.REPLACED}</strong>
-            </Link>
-
-            <Link to="/inventory?status=RETIRED" className="attention-row attention-row-link">
-              <div className="attention-icon attention-danger">×</div>
-              <div className="attention-copy">
-                <strong>ปลดระวาง</strong>
-                <span>อุปกรณ์ที่สิ้นสุด Lifecycle</span>
-              </div>
-              <strong className="attention-value">{summary.RETIRED}</strong>
+              <strong className="attention-value">{operationsSummary.claim}</strong>
             </Link>
           </div>
         </section>
@@ -161,27 +164,28 @@ function DashboardPage() {
         <section className="card dashboard-panel">
           <div className="panel-heading">
             <div>
-              <span className="section-kicker">RECENT ASSETS</span>
-              <h3 className="panel-title">อุปกรณ์ที่อัปเดตล่าสุด</h3>
+              <span className="section-kicker">RECENT OPERATIONS</span>
+              <h3 className="panel-title">รายการล่าสุด</h3>
             </div>
-            <Link to="/inventory?sort=updated_at&order=desc" className="text-link">
-              ดูทั้งหมด
-            </Link>
+            <Link to="/operations" className="text-link">ดูทั้งหมด</Link>
           </div>
 
-          {recentItems.length === 0 ? (
-            <div className="compact-empty">ยังไม่มีข้อมูลอุปกรณ์</div>
+          {operationsSummary.recent.length === 0 ? (
+            <div className="compact-empty">ยังไม่มีประวัติการเบิก คืน หรือย้ายแบบหลายรายการ</div>
           ) : (
-            <div className="recent-asset-list">
-              {recentItems.map((item) => (
-                <Link key={item.id} to={`/inventory/${item.id}`} className="recent-asset-row">
-                  <div className="recent-asset-identity">
-                    <strong className="serial-text">{item.serial_number}</strong>
-                    <span>{item.product_name || "ไม่ระบุรุ่น"}</span>
+            <div className="dashboard-operation-list">
+              {operationsSummary.recent.map((operation) => (
+                <Link key={operation.id} to={`/operations/${operation.id}`} className="dashboard-operation-row">
+                  <div>
+                    <strong className="serial-text">{operation.operation_code}</strong>
+                    <span>
+                      {OPERATION_CONFIG[operation.operation_type]?.label || operation.operation_type}
+                      {operation.project_name_snapshot ? ` · ${operation.project_name_snapshot}` : ""}
+                    </span>
                   </div>
-                  <div className="recent-asset-meta">
-                    <span>{item.current_location || "ไม่ระบุตำแหน่ง"}</span>
-                    <StatusBadge status={item.current_status} />
+                  <div className="dashboard-operation-meta">
+                    <strong>{operation.item_count} รายการ</strong>
+                    <span>{formatDateTime(operation.created_at)}</span>
                   </div>
                 </Link>
               ))}

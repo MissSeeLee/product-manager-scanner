@@ -6,61 +6,43 @@ import {
 } from "../api/inventoryApi";
 import { downloadCsv, parseCsv } from "../../../shared/lib/csv";
 
-const FIELD_OPTIONS = [
-  ["", "ไม่ใช้คอลัมน์นี้"],
-  ["serialNumber", "Serial Number *"],
-  ["productName", "ชื่อรุ่น *"],
-  ["brand", "ยี่ห้อ *"],
-  ["partNumber", "Part Number *"],
-  ["category", "หมวดหมู่"],
-  ["description", "รายละเอียดรุ่น"],
-  ["currentLocation", "ตำแหน่งเริ่มต้น *"],
-  ["receivedAt", "วันที่รับเข้า"],
-  ["performedBy", "ผู้รับเข้า"],
-  ["distributor", "ผู้จัดจำหน่าย"],
-  ["warrantyStart", "วันที่เริ่มประกัน"],
-  ["warrantyEnd", "วันที่สิ้นสุดประกัน"],
-  ["note", "หมายเหตุ"],
+const ASSETOPS_TEMPLATE_HEADERS = [
+  "SerialNumber",
+  "ModelName",
+  "Brand",
+  "PartNumber",
+  "Category",
+  "Location",
+  "ReceivedDate",
+  "ReceivedBy",
+  "Distributor",
+  "WarrantyStart",
+  "WarrantyEnd",
+  "Note",
 ];
 
-const HEADER_ALIASES = {
-  serialNumber: ["serial", "serialnumber", "serialno", "sn", "s/n"],
-  productName: ["product", "productname", "model", "modelname", "device"],
-  brand: ["brand", "manufacturer", "maker"],
-  partNumber: ["partnumber", "partno", "p/n", "pn"],
-  category: ["category", "type"],
-  description: ["description", "detail", "details"],
-  currentLocation: ["location", "room", "site"],
-  receivedAt: ["receiveddate", "receivedat", "date received", "receive date"],
-  performedBy: ["receivedby", "performedby", "receiver"],
-  distributor: ["distributor", "vendor", "supplier"],
-  warrantyStart: ["warrantystart", "warranty start"],
-  warrantyEnd: ["warrantyend", "warranty end", "warrantyexpiry"],
-  note: ["note", "notes", "remark", "remarks"],
+const ASSETOPS_STRICT_MAPPING = {
+  SerialNumber: "serialNumber",
+  ModelName: "productName",
+  Brand: "brand",
+  PartNumber: "partNumber",
+  Category: "category",
+  Location: "currentLocation",
+  ReceivedDate: "receivedAt",
+  ReceivedBy: "performedBy",
+  Distributor: "distributor",
+  WarrantyStart: "warrantyStart",
+  WarrantyEnd: "warrantyEnd",
+  Note: "note",
 };
 
-function normalizeHeader(value) {
-  return value.toLowerCase().replace(/[\s_-]/g, "").trim();
-}
-
-function guessMapping(headers) {
-  const mapping = {};
-
-  for (const header of headers) {
-    const normalized = normalizeHeader(header);
-    let match = "";
-
-    for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-      if (aliases.some((alias) => normalizeHeader(alias) === normalized)) {
-        match = field;
-        break;
-      }
-    }
-
-    mapping[header] = match;
-  }
-
-  return mapping;
+function headersExactlyMatchAssetOps(actual) {
+  return (
+    actual.length === ASSETOPS_TEMPLATE_HEADERS.length &&
+    ASSETOPS_TEMPLATE_HEADERS.every(
+      (expected, index) => actual[index] === expected,
+    )
+  );
 }
 
 function buildRows(sourceRows, mapping) {
@@ -96,7 +78,6 @@ function buildRows(sourceRows, mapping) {
 
 function CsvImportPanel({ onDone, onCancel }) {
   const [fileName, setFileName] = useState("");
-  const [headers, setHeaders] = useState([]);
   const [sourceRows, setSourceRows] = useState([]);
   const [mapping, setMapping] = useState({});
 
@@ -109,15 +90,6 @@ function CsvImportPanel({ onDone, onCancel }) {
     () => buildRows(sourceRows, mapping),
     [sourceRows, mapping],
   );
-
-  const selectedFields = new Set(Object.values(mapping).filter(Boolean));
-  const requiredMapped = [
-    "serialNumber",
-    "productName",
-    "brand",
-    "partNumber",
-    "currentLocation",
-  ].every((field) => selectedFields.has(field));
 
   async function handleFile(event) {
     const file = event.target.files?.[0];
@@ -142,6 +114,8 @@ function CsvImportPanel({ onDone, onCancel }) {
       return;
     }
 
+    setLoading(true);
+
     try {
       const text = await file.text();
       const parsed = parseCsv(text);
@@ -156,52 +130,41 @@ function CsvImportPanel({ onDone, onCancel }) {
         return;
       }
 
-      setFileName(file.name);
-      setHeaders(parsed.headers);
-      setSourceRows(parsed.rows);
-      setMapping(guessMapping(parsed.headers));
-    } catch (parseError) {
-      if (parseError?.message === "CSV_UNCLOSED_QUOTE") {
-        setError("ไฟล์ CSV มีเครื่องหมายคำพูดเปิดไว้แต่ไม่ปิด กรุณาตรวจสอบไฟล์");
-      } else if (parseError?.message === "CSV_EMPTY_HEADER") {
-        setError("ไฟล์ CSV มีชื่อคอลัมน์ว่าง กรุณาตั้งชื่อทุกคอลัมน์ก่อนนำเข้า");
-      } else if (parseError?.message === "CSV_DUPLICATE_HEADER") {
-        setError("ไฟล์ CSV มีชื่อคอลัมน์ซ้ำ กรุณาเปลี่ยนชื่อคอลัมน์ให้ไม่ซ้ำกัน");
-      } else if (parseError?.message?.startsWith("CSV_TOO_MANY_COLUMNS:")) {
-        const rowNumber = parseError.message.split(":")[1];
-        setError(`แถว ${rowNumber} มีจำนวนคอลัมน์มากกว่าหัวตาราง กรุณาตรวจสอบไฟล์`);
-      } else {
-        setError("ไม่สามารถอ่านไฟล์ CSV ได้");
+      if (!headersExactlyMatchAssetOps(parsed.headers)) {
+        setFileName("");
+        setSourceRows([]);
+        setMapping({});
+        setError(
+          "Header ไม่ตรงแบบฟอร์ม AssetOps กรุณาดาวน์โหลดและใช้ไฟล์ตัวอย่างจากระบบ",
+        );
+        event.target.value = "";
+        return;
       }
-    }
-  }
 
-  function updateMapping(header, field) {
-    setMapping((current) => ({
-      ...current,
-      [header]: field,
-    }));
-    setValidation(null);
-    setImportResult(null);
-  }
+      const strictMapping = Object.fromEntries(
+        parsed.headers.map((header) => [header, ASSETOPS_STRICT_MAPPING[header]]),
+      );
+      const rows = buildRows(parsed.rows, strictMapping);
 
-  async function handleValidate() {
-    setError("");
-    setValidation(null);
-    setImportResult(null);
+      setFileName(file.name);
+      setSourceRows(parsed.rows);
+      setMapping(strictMapping);
 
-    if (!requiredMapped) {
-      setError("กรุณา map Serial Number, ชื่อรุ่น, ยี่ห้อ, Part Number และตำแหน่งเริ่มต้นให้ครบ");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await validateBulkInventory(mappedRows);
+      const response = await validateBulkInventory(rows);
       setValidation(response?.data ?? null);
     } catch (requestError) {
-      setError(requestError.message || "ไม่สามารถตรวจสอบข้อมูลได้");
+      if (requestError?.message === "CSV_UNCLOSED_QUOTE") {
+        setError("ไฟล์ CSV มีเครื่องหมายคำพูดเปิดไว้แต่ไม่ปิด กรุณาตรวจสอบไฟล์");
+      } else if (requestError?.message === "CSV_EMPTY_HEADER") {
+        setError("ไฟล์ CSV มีชื่อคอลัมน์ว่าง กรุณาตั้งชื่อทุกคอลัมน์ก่อนนำเข้า");
+      } else if (requestError?.message === "CSV_DUPLICATE_HEADER") {
+        setError("ไฟล์ CSV มีชื่อคอลัมน์ซ้ำ กรุณาเปลี่ยนชื่อคอลัมน์ให้ไม่ซ้ำกัน");
+      } else if (requestError?.message?.startsWith("CSV_TOO_MANY_COLUMNS:")) {
+        const rowNumber = requestError.message.split(":")[1];
+        setError(`แถว ${rowNumber} มีจำนวนคอลัมน์มากกว่าหัวตาราง กรุณาตรวจสอบไฟล์`);
+      } else {
+        setError(requestError?.message || "ไม่สามารถอ่านหรือตรวจสอบไฟล์ CSV ได้");
+      }
     } finally {
       setLoading(false);
     }
@@ -312,44 +275,10 @@ function CsvImportPanel({ onDone, onCancel }) {
         </p>
       )}
 
-      {headers.length > 0 && (
-        <>
-          <div className="import-section-heading">
-            <span className="form-step">01</span>
-            <div>
-              <strong>จับคู่คอลัมน์</strong>
-              <span>เลือกว่าคอลัมน์ในไฟล์ตรงกับข้อมูลใดในระบบ</span>
-            </div>
-          </div>
-
-          <div className="mapping-grid">
-            {headers.map((header) => (
-              <label key={header}>
-                <span>{header}</span>
-                <select
-                  value={mapping[header] || ""}
-                  onChange={(event) => updateMapping(header, event.target.value)}
-                >
-                  {FIELD_OPTIONS.map(([value, label]) => (
-                    <option
-                      key={value || "none"}
-                      value={value}
-                      disabled={value && value !== mapping[header] && selectedFields.has(value)}
-                    >
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ))}
-          </div>
-
-          <div className="form-actions">
-            <button type="button" className="button button-primary" onClick={handleValidate} disabled={loading}>
-              {loading ? "กำลังตรวจสอบ..." : "ตรวจสอบข้อมูล"}
-            </button>
-          </div>
-        </>
+      {fileName && !error && (
+        <div className="message message-success">
+          ✓ Header ตรงแบบฟอร์ม AssetOps — Auto-map และตรวจสอบข้อมูลแล้ว
+        </div>
       )}
 
       {validation && (

@@ -31,8 +31,8 @@ export const STATUS_CONFIG = {
 
 export const ACTIONS_BY_STATUS = {
   IN_STOCK: ["ISSUE", "MOVE", "CLAIM", "RETIRE"],
-  IN_USE: ["MOVE", "RETURN", "CLAIM", "RETIRE"],
-  CLAIM: ["MOVE", "CLAIM_RETURN", "REPLACED", "RETIRE"],
+  IN_USE: ["RETURN", "MOVE", "CLAIM", "RETIRE"],
+  CLAIM: ["CLAIM_RETURN", "REPLACED", "MOVE", "RETIRE"],
   REPLACED: [],
   RETIRED: [],
 };

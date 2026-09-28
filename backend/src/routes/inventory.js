@@ -21,6 +21,7 @@ const SORT_COLUMNS = {
   current_location: "inventory_items.current_location",
   received_at: "received.received_at",
   warranty_end: "inventory_items.warranty_end",
+  expected_return_date: "inventory_items.expected_return_date",
   created_at: "inventory_items.created_at",
   updated_at: "inventory_items.updated_at",
 };
@@ -119,6 +120,12 @@ function inventorySelectSql() {
       inventory_items.warranty_end,
       inventory_items.created_at,
       inventory_items.updated_at,
+      inventory_items.current_project_id,
+      inventory_items.current_responsible_person,
+      inventory_items.expected_return_date,
+      inventory_items.current_issue_operation_id,
+      projects.project_name AS current_project_name,
+      projects.project_code AS current_project_code,
       products.product_name,
       products.brand,
       products.part_number,
@@ -127,6 +134,8 @@ function inventorySelectSql() {
     FROM inventory_items
     JOIN products
       ON inventory_items.product_id = products.id
+    LEFT JOIN projects
+      ON inventory_items.current_project_id = projects.id
     LEFT JOIN LATERAL (
       SELECT stock_movements.movement_date AS received_at
       FROM stock_movements
@@ -765,6 +774,7 @@ router.get("/", async (req, res) => {
     search,
     status,
     productId,
+    projectId,
     location,
     brand,
     partNumber,
@@ -772,6 +782,7 @@ router.get("/", async (req, res) => {
     receivedFrom,
     receivedTo,
     warranty,
+    returnDue,
     timezoneOffsetMinutes,
     sort = "created_at",
     order = "desc",
@@ -785,11 +796,26 @@ router.get("/", async (req, res) => {
   }
 
   const parsedProductId = productId ? parseId(productId) : null;
+  const parsedProjectId = projectId ? parseId(projectId) : null;
 
   if (productId && !parsedProductId) {
     return res.status(400).json({
       code: "INVALID_PRODUCT_FILTER",
       message: "ตัวกรองรุ่นสินค้าไม่ถูกต้อง",
+    });
+  }
+
+  if (projectId && !parsedProjectId) {
+    return res.status(400).json({
+      code: "INVALID_PROJECT_FILTER",
+      message: "ตัวกรองโครงการไม่ถูกต้อง",
+    });
+  }
+
+  if (returnDue && !["today", "overdue"].includes(returnDue)) {
+    return res.status(400).json({
+      code: "INVALID_RETURN_DUE_FILTER",
+      message: "ตัวกรองกำหนดคืนไม่ถูกต้อง",
     });
   }
 
@@ -824,6 +850,8 @@ router.get("/", async (req, res) => {
       OR products.brand ILIKE ${p}
       OR products.part_number ILIKE ${p}
       OR inventory_items.current_location ILIKE ${p}
+      OR projects.project_name ILIKE ${p}
+      OR inventory_items.current_responsible_person ILIKE ${p}
     )`);
   }
 
@@ -833,6 +861,10 @@ router.get("/", async (req, res) => {
 
   if (parsedProductId) {
     pushCondition("inventory_items.product_id = ?", parsedProductId);
+  }
+
+  if (parsedProjectId) {
+    pushCondition("inventory_items.current_project_id = ?", parsedProjectId);
   }
 
   if (normalizeOptionalString(location)) {
@@ -878,6 +910,18 @@ router.get("/", async (req, res) => {
     pushCondition("received.received_at < ?::timestamptz", exclusive.toISOString());
   }
 
+  if (returnDue === "today") {
+    conditions.push(`
+      inventory_items.current_status = 'IN_USE'
+      AND inventory_items.expected_return_date = CURRENT_DATE
+    `);
+  } else if (returnDue === "overdue") {
+    conditions.push(`
+      inventory_items.current_status = 'IN_USE'
+      AND inventory_items.expected_return_date < CURRENT_DATE
+    `);
+  }
+
   if (warranty === "expired") {
     conditions.push("inventory_items.warranty_end < CURRENT_DATE");
   } else if (warranty === "expiring") {
@@ -909,6 +953,8 @@ router.get("/", async (req, res) => {
       FROM inventory_items
       JOIN products
         ON inventory_items.product_id = products.id
+      LEFT JOIN projects
+        ON inventory_items.current_project_id = projects.id
       LEFT JOIN LATERAL (
         SELECT stock_movements.movement_date AS received_at
         FROM stock_movements

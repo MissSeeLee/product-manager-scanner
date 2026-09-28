@@ -3,12 +3,29 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import pool from "./db.js";
+import {
+  enforceManagerPermissions,
+  requireAuth,
+  requireRole,
+} from "./auth/middleware.js";
 
+import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/users.js";
 import productRoutes from "./routes/products.js";
 import inventoryRoutes from "./routes/inventory.js";
 import movementRoutes from "./routes/movements.js";
+import operationsRoutes from "./routes/operations.js";
+import projectRoutes from "./routes/projects.js";
+import locationRoutes from "./routes/locations.js";
+import publicRoutes from "./routes/public.js";
 
 const app = express();
+
+if (process.env.ASSETOPS_TRUST_PROXY === "1") {
+  app.set("trust proxy", 1);
+}
+
+app.disable("x-powered-by");
 
 // --------------------------------------------------
 // PATHS
@@ -18,17 +35,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
-
 const frontendIndexPath = path.join(frontendDistPath, "index.html");
 
 // --------------------------------------------------
 // MIDDLEWARE
 // --------------------------------------------------
 
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "same-origin");
+  res.setHeader("Permissions-Policy", "camera=(self)");
+  return next();
+});
 
 // --------------------------------------------------
-// HEALTH
+// PUBLIC HEALTH / AUTH / VIEWER API
 // --------------------------------------------------
 
 app.get("/api/health", (req, res) => {
@@ -38,6 +62,17 @@ app.get("/api/health", (req, res) => {
     },
   });
 });
+
+app.use("/api/auth", authRoutes);
+
+// Public Viewer must remain unauthenticated and read-only by its own router.
+app.use("/api/public", publicRoutes);
+
+// --------------------------------------------------
+// MANAGER AUTHORIZATION BOUNDARY
+// --------------------------------------------------
+
+app.use("/api", requireAuth, enforceManagerPermissions);
 
 app.get("/api/db-health", async (req, res) => {
   try {
@@ -59,15 +94,19 @@ app.get("/api/db-health", async (req, res) => {
   }
 });
 
+// User administration is ADMIN-only, including reads.
+app.use("/api/users", requireRole("ADMIN"), userRoutes);
+
 // --------------------------------------------------
-// API ROUTES
+// MANAGER API ROUTES
 // --------------------------------------------------
 
 app.use("/api/products", productRoutes);
-
 app.use("/api/inventory-items", inventoryRoutes);
-
 app.use("/api/inventory-items", movementRoutes);
+app.use("/api/operations", operationsRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/locations", locationRoutes);
 
 // --------------------------------------------------
 // API 404

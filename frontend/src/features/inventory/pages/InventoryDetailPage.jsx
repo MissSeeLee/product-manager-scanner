@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getInventoryItemById } from "../api/inventoryApi";
@@ -18,9 +18,11 @@ import {
   ACTION_LABELS,
 } from "../config/inventoryConfig";
 
-import MovementForm from "../components/MovementForm";
+import MovementActionDialog from "../components/MovementActionDialog";
 import MovementTimeline from "../components/MovementTimeline";
 import StatusBadge from "../components/StatusBadge";
+import { getLocations } from "../../locations/api/locationsApi";
+import { getProjects } from "../../projects/api/projectsApi";
 
 import { formatDate, formatDateTime } from "../../../shared/lib/formatters";
 
@@ -34,6 +36,24 @@ const MOVEMENT_HANDLERS = {
   CLAIM_RETURN: claimReturnInventory,
   REPLACED: replaceInventory,
   RETIRE: retireInventory,
+};
+
+const ACTION_GROUPS = {
+  IN_STOCK: {
+    primary: "ISSUE",
+    secondary: ["MOVE"],
+    more: ["CLAIM", "RETIRE"],
+  },
+  IN_USE: {
+    primary: "RETURN",
+    secondary: ["MOVE"],
+    more: ["CLAIM", "RETIRE"],
+  },
+  CLAIM: {
+    primary: "CLAIM_RETURN",
+    secondary: ["REPLACED"],
+    more: ["MOVE", "RETIRE"],
+  },
 };
 
 async function fetchDetail(id) {
@@ -66,6 +86,8 @@ function InventoryDetailPage() {
 
   const [item, setItem] = useState(null);
   const [movements, setMovements] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [selectedAction, setSelectedAction] = useState(null);
 
   const [loading, setLoading] = useState(true);
@@ -79,11 +101,17 @@ function InventoryDetailPage() {
 
     async function loadDetail() {
       try {
-        const data = await fetchDetail(id);
+        const [detailData, locationData, projectData] = await Promise.all([
+          fetchDetail(id),
+          getLocations().catch(() => []),
+          getProjects({ status: "ACTIVE" }).catch(() => []),
+        ]);
 
         if (!cancelled) {
-          setItem(data.item);
-          setMovements(data.movements);
+          setItem(detailData.item);
+          setMovements(detailData.movements);
+          setLocations(locationData);
+          setProjects(projectData);
         }
       } catch (err) {
         if (!cancelled) {
@@ -121,7 +149,14 @@ function InventoryDetailPage() {
     setSuccessMessage("");
 
     try {
-      const result = await handler(id, data);
+      const payload =
+        selectedAction === "RETURN"
+          ? {
+              ...data,
+              sourceOperationId: item?.current_issue_operation_id ?? null,
+            }
+          : data;
+      const result = await handler(id, payload);
       const refreshed = await fetchDetail(id);
 
       setItem(refreshed.item);
@@ -134,6 +169,25 @@ function InventoryDetailPage() {
       setActionLoading(false);
     }
   }
+
+  const actionLayout = useMemo(() => {
+    if (!item) {
+      return { primary: null, secondary: [], more: [] };
+    }
+
+    const available = new Set(ACTIONS_BY_STATUS[item.current_status] ?? []);
+    const preferred = ACTION_GROUPS[item.current_status] ?? {
+      primary: null,
+      secondary: [],
+      more: [],
+    };
+
+    return {
+      primary: available.has(preferred.primary) ? preferred.primary : null,
+      secondary: preferred.secondary.filter((action) => available.has(action)),
+      more: preferred.more.filter((action) => available.has(action)),
+    };
+  }, [item]);
 
   if (loading) {
     return <div className="card">กำลังโหลดข้อมูลอุปกรณ์...</div>;
@@ -194,6 +248,31 @@ function InventoryDetailPage() {
               <dd>{item.current_location || "ไม่ระบุ"}</dd>
             </div>
 
+            {item.current_project_name && (
+              <div className="asset-summary-row asset-summary-highlight">
+                <dt>งาน / โครงการ</dt>
+                <dd>
+                  {item.current_project_code
+                    ? `${item.current_project_code} · ${item.current_project_name}`
+                    : item.current_project_name}
+                </dd>
+              </div>
+            )}
+
+            {item.current_responsible_person && (
+              <div className="asset-summary-row">
+                <dt>ผู้รับผิดชอบ</dt>
+                <dd>{item.current_responsible_person}</dd>
+              </div>
+            )}
+
+            {item.expected_return_date && (
+              <div className="asset-summary-row">
+                <dt>กำหนดคืน</dt>
+                <dd>{formatDate(item.expected_return_date)}</dd>
+              </div>
+            )}
+
             <div className="asset-summary-row">
               <dt>วันที่รับเข้า</dt>
               <dd>
@@ -244,28 +323,66 @@ function InventoryDetailPage() {
           <div className="asset-section-heading">
             <div>
               <h2 className="card-title">การดำเนินการ</h2>
-              <p>คำสั่งที่ทำได้จากสถานะปัจจุบัน</p>
+              <p>จัดการอุปกรณ์ชิ้นนี้ โดยไม่ต้องเลื่อนหาฟอร์มด้านล่าง</p>
             </div>
           </div>
 
           {availableActions.length > 0 ? (
-            <div className="asset-action-list">
-              {availableActions.map((action) => (
-                <button
-                  key={action}
-                  type="button"
-                  className={
-                    selectedAction === action
-                      ? `${ACTION_BUTTON_CLASSES[action]} action-selected`
-                      : ACTION_BUTTON_CLASSES[action]
-                  }
-                  disabled={actionLoading}
-                  onClick={() => handleSelectAction(action)}
-                >
-                  {ACTION_LABELS[action]}
-                </button>
-              ))}
-            </div>
+            <>
+              <div className="asset-action-list asset-action-list-priority">
+                {actionLayout.primary && (
+                  <button
+                    type="button"
+                    className={ACTION_BUTTON_CLASSES[actionLayout.primary]}
+                    disabled={actionLoading}
+                    onClick={() => handleSelectAction(actionLayout.primary)}
+                  >
+                    {ACTION_LABELS[actionLayout.primary]}
+                  </button>
+                )}
+
+                {actionLayout.secondary.map((action) => (
+                  <button
+                    key={action}
+                    type="button"
+                    className={ACTION_BUTTON_CLASSES[action]}
+                    disabled={actionLoading}
+                    onClick={() => handleSelectAction(action)}
+                  >
+                    {ACTION_LABELS[action]}
+                  </button>
+                ))}
+              </div>
+
+              {actionLayout.more.length > 0 && (
+                <details className="asset-more-actions">
+                  <summary>การดำเนินการเพิ่มเติม</summary>
+                  <div className="asset-action-list asset-more-action-list">
+                    {actionLayout.more.map((action) => (
+                      <button
+                        key={action}
+                        type="button"
+                        className={ACTION_BUTTON_CLASSES[action]}
+                        disabled={actionLoading}
+                        onClick={() => handleSelectAction(action)}
+                      >
+                        {ACTION_LABELS[action]}
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              )}
+
+              {(item.current_status === "IN_STOCK" || item.current_status === "IN_USE") && (
+                <div className="asset-bulk-hint">
+                  <strong>ทำหลายเครื่องพร้อมกัน?</strong>
+                  <span>เลือกหลายรายการจาก Asset Explorer แล้วกรอกข้อมูลร่วมเพียงครั้งเดียว</span>
+                  <Link to="/inventory" className="text-link">
+                    ไปเลือกหลายอุปกรณ์ →
+                  </Link>
+                </div>
+              )}
+            </>
           ) : (
             <div className="terminal-state">
               <strong>สิ้นสุด Lifecycle</strong>
@@ -277,17 +394,20 @@ function InventoryDetailPage() {
         </aside>
       </div>
 
+      <MovementTimeline movements={movements} />
+
       {selectedAction && (
-        <MovementForm
+        <MovementActionDialog
           key={selectedAction}
           action={selectedAction}
+          item={item}
           loading={actionLoading}
+          locations={locations}
+          projects={projects}
           onSubmit={handleMovementSubmit}
-          onCancel={() => setSelectedAction(null)}
+          onClose={() => !actionLoading && setSelectedAction(null)}
         />
       )}
-
-      <MovementTimeline movements={movements} />
     </>
   );
 }

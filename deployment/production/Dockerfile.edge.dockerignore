@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/dist
+.patch-backups
+db-backups
+qa-reports
+.local-secrets
+.env
+.env.*
+*.log

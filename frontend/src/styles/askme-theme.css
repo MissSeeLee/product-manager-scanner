@@ -1,0 +1,987 @@
+/* ==========================================================
+   ASKME-BRAND-THEME-v1
+   AskMe Solutions & Consultants Co., Ltd. visual layer
+   ========================================================== */
+
+:root {
+  --bg: #0a1020;
+  --surface: #121c2f;
+  --surface-2: #172338;
+  --surface-3: #1c2940;
+  --border: #29374f;
+  --text: #f3f6fa;
+  --text-muted: #8d9aaf;
+  --primary: #f12b2f;
+  --primary-hover: #d92327;
+  --danger: #ff7b7d;
+  --success: #3ecf8e;
+  --warning: #f5b942;
+  --askme-info: #5ea6ff;
+  --shadow: 0 14px 38px rgba(0, 0, 0, 0.24);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(circle at 88% 0%, rgba(241, 43, 47, 0.10), transparent 27%),
+    var(--bg);
+}
+
+.sidebar {
+  background: linear-gradient(180deg, #0e1628 0%, #090f1c 100%);
+  border-right-color: #223047;
+}
+
+.brand {
+  margin-bottom: 24px;
+  padding: 0 10px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 190px;
+  height: auto;
+  margin: 0 0 12px;
+  object-fit: contain;
+}
+
+.brand-title {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.brand-subtitle {
+  color: #74849b;
+  font-size: 11px;
+}
+
+.nav-link {
+  border-radius: 8px;
+}
+
+.nav-link:hover {
+  background: #151f32;
+}
+
+.nav-link.active {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(241, 43, 47, 0.16),
+      rgba(241, 43, 47, 0.05)
+    );
+  color: #ffffff;
+  box-shadow: inset 3px 0 0 #f12b2f;
+}
+
+.topbar {
+  background: rgba(10, 16, 32, 0.88);
+  border-bottom-color: #223047;
+  backdrop-filter: blur(14px);
+}
+
+.card,
+.asset-explorer-card,
+.operation-workspace,
+.operation-card,
+.summary-card,
+.dashboard-card,
+.stat-card {
+  background: linear-gradient(180deg, #121c2f 0%, #101827 100%);
+  border-color: #29374f;
+  box-shadow: var(--shadow);
+}
+
+.button-primary,
+.button.primary {
+  background: #f12b2f;
+  border-color: #f12b2f;
+  color: #ffffff;
+}
+
+.button-primary:hover,
+.button.primary:hover {
+  background: #d92327;
+  border-color: #d92327;
+}
+
+.button-secondary,
+.button.secondary {
+  background: #1c2940;
+  border-color: #34425a;
+  color: #c6d0de;
+}
+
+.form-control,
+.form-field input,
+.form-field select,
+.form-field textarea,
+input,
+select,
+textarea {
+  border-color: #29374f;
+}
+
+.form-control:focus,
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #f12b2f;
+  box-shadow: 0 0 0 3px rgba(241, 43, 47, 0.13);
+  outline: none;
+}
+
+.data-table thead th,
+table thead th {
+  background: #0f1728;
+}
+
+.data-table tbody tr:hover,
+table tbody tr:hover {
+  background: rgba(241, 43, 47, 0.035);
+}
+
+a {
+  accent-color: #f12b2f;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #f12b2f;
+}
+
+::selection {
+  background: rgba(241, 43, 47, 0.32);
+  color: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .brand-logo {
+    max-width: 170px;
+  }
+}
+
+/* ASKME-MANAGER-BRAND-LAYOUT-HOTFIX-v1.3 */
+
+/*
+  The existing AssetOps brand block is a horizontal flex row:
+  [mark] [AssetOps text].
+  Adding the wide AskMe logo as another child made the remaining text
+  collapse into a few pixels and wrap one character per line.
+
+  For the AskMe-branded shell, the official AskMe logo becomes the
+  complete visual identity inside this slot. Existing brand children
+  are retained in the DOM but hidden visually.
+*/
+.brand {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+
+  margin-bottom: 24px !important;
+  padding: 4px 10px 18px !important;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.brand > .brand-logo {
+  display: block !important;
+  width: 100% !important;
+  max-width: 190px !important;
+  height: auto !important;
+
+  margin: 0 auto !important;
+  object-fit: contain !important;
+}
+
+/* Prevent the legacy AO mark + AssetOps title/subtitle from overflowing. */
+.brand > :not(.brand-logo) {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .brand {
+    margin-bottom: 12px !important;
+    padding: 2px 8px 10px !important;
+  }
+
+  .brand > .brand-logo {
+    max-width: 170px !important;
+    margin-left: 0 !important;
+  }
+}
+/* ASSETOPS-CANONICAL-CSV-PREVIEW-v1 */
+.csv-canonical-status {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #29374f);
+  border-radius: 9px;
+  background: rgba(94, 166, 255, 0.07);
+  color: var(--text-muted, #8d9aaf);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.csv-canonical-shell[data-csv-canonical-mode="canonical"]
+  .csv-canonical-status {
+  border-color: rgba(62, 207, 142, 0.34);
+  background: rgba(62, 207, 142, 0.08);
+  color: var(--success, #3ecf8e);
+}
+
+.csv-canonical-shell[data-csv-canonical-mode="checking"]
+  .csv-canonical-status {
+  border-color: rgba(94, 166, 255, 0.34);
+  color: var(--askme-info, #5ea6ff);
+}
+
+.csv-canonical-shell[data-csv-canonical-mode="manual"]
+  .csv-canonical-status {
+  border-color: rgba(245, 185, 66, 0.34);
+  background: rgba(245, 185, 66, 0.07);
+  color: var(--warning, #f5b942);
+}
+
+/* ASSETOPS-STRICT-CSV-TEMPLATE-v2 */
+.csv-canonical-shell[data-csv-canonical-mode="invalid"]
+  .csv-canonical-status {
+  border-color: rgba(255, 123, 125, 0.42);
+  background: rgba(255, 123, 125, 0.08);
+  color: var(--danger, #ff7b7d);
+}
+
+/* Mapping is an internal implementation detail for the controlled template. */
+.csv-canonical-shell [data-csv-legacy-mapping-field="true"],
+.csv-canonical-shell [data-csv-legacy-validate="true"] {
+  display: none !important;
+}
+
+/* ASSETOPS-STRICT-CSV-TEMPLATE-v3 */
+.csv-canonical-shell[data-csv-canonical-mode="invalid"]
+  .csv-canonical-status {
+  border-color: rgba(255, 123, 125, 0.42);
+  background: rgba(255, 123, 125, 0.08);
+  color: var(--danger, #ff7b7d);
+}
+
+.csv-canonical-shell [data-csv-legacy-mapping-field="true"],
+.csv-canonical-shell [data-csv-legacy-validate="true"] {
+  display: none !important;
+}
+
+/* ASSETOPS-CSV-DIRECT-HEADER-v4 */
+.csv-strict-v4-status {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #29374f);
+  border-radius: 9px;
+  background: rgba(94, 166, 255, 0.07);
+  color: var(--text-muted, #8d9aaf);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.csv-strict-v4-shell[data-csv-strict-mode="checking"]
+  .csv-strict-v4-status {
+  border-color: rgba(94, 166, 255, 0.34);
+  color: var(--askme-info, #5ea6ff);
+}
+
+.csv-strict-v4-shell[data-csv-strict-mode="ready"]
+  .csv-strict-v4-status {
+  border-color: rgba(62, 207, 142, 0.34);
+  background: rgba(62, 207, 142, 0.08);
+  color: var(--success, #3ecf8e);
+}
+
+.csv-strict-v4-shell[data-csv-strict-mode="invalid"]
+  .csv-strict-v4-status,
+.csv-strict-v4-shell[data-csv-strict-mode="error"]
+  .csv-strict-v4-status {
+  border-color: rgba(255, 123, 125, 0.42);
+  background: rgba(255, 123, 125, 0.08);
+  color: var(--danger, #ff7b7d);
+}
+
+.csv-strict-v4-shell [data-csv-v4-hidden-mapping="true"],
+.csv-strict-v4-shell [data-csv-v4-hidden-validate="true"] {
+  display: none !important;
+}
+
+/* ASSETOPS-LOCATION-MASTER-MANAGEMENT-v1 */
+.location-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(520px, 1.45fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.location-list-card {
+  overflow: hidden;
+}
+
+.location-list-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border, #29374f);
+}
+
+.location-list-header h2,
+.location-create-card h2 {
+  margin: 4px 0 0;
+}
+
+.location-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.location-summary > span {
+  padding: 5px 9px;
+  border: 1px solid var(--border, #29374f);
+  border-radius: 999px;
+}
+
+.location-summary-active {
+  color: var(--success, #3ecf8e);
+}
+
+.location-summary-inactive {
+  color: var(--text-muted, #8d9aaf);
+}
+
+.location-master-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.location-master-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border, #29374f);
+}
+
+.location-master-row:last-child {
+  border-bottom: 0;
+}
+
+.location-master-row.is-inactive {
+  opacity: 0.72;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.location-row-title {
+  font-weight: 850;
+  color: var(--text, #f5f7fb);
+}
+
+.location-row-code {
+  margin-top: 3px;
+  color: var(--text-muted, #8d9aaf);
+  font-size: 12px;
+}
+
+.location-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border, #29374f);
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.location-status-pill.is-active {
+  color: var(--success, #3ecf8e);
+  border-color: rgba(62, 207, 142, 0.28);
+  background: rgba(62, 207, 142, 0.06);
+}
+
+.location-status-pill.is-inactive {
+  color: var(--text-muted, #8d9aaf);
+}
+
+.location-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.button-small {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.button-danger {
+  border: 1px solid rgba(241, 43, 47, 0.44);
+  background: rgba(241, 43, 47, 0.09);
+  color: #ff8588;
+}
+
+.button-danger:hover:not(:disabled) {
+  background: rgba(241, 43, 47, 0.16);
+}
+
+.location-edit-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.7fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.location-edit-actions {
+  align-self: end;
+  padding-bottom: 1px;
+}
+
+.location-safety-note {
+  display: grid;
+  gap: 4px;
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(94, 166, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(94, 166, 255, 0.04);
+  color: var(--text-muted, #8d9aaf);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.location-safety-note strong {
+  color: var(--text, #f5f7fb);
+}
+
+.location-empty-state {
+  padding: 30px 20px;
+  text-align: center;
+  color: var(--text-muted, #8d9aaf);
+}
+
+@media (max-width: 1050px) {
+  .location-admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .location-list-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .location-summary {
+    justify-content: flex-start;
+  }
+
+  .location-master-row {
+    grid-template-columns: 1fr;
+  }
+
+  .location-row-actions {
+    justify-content: flex-start;
+  }
+
+  .location-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ASSETOPS-PROJECT-MANAGEMENT-v1 */
+.project-admin-panel {
+  margin-top: 18px;
+  padding: 20px;
+}
+
+.project-admin-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.project-admin-selector {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.project-admin-status {
+  padding: 7px 10px;
+  border: 1px solid var(--border, #29374f);
+  border-radius: 999px;
+  color: var(--text-muted, #8d9aaf);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-admin-status.is-active {
+  border-color: rgba(62, 207, 142, 0.3);
+  color: var(--success, #3ecf8e);
+}
+
+.project-admin-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.project-admin-summary > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border, #29374f);
+  border-radius: 10px;
+}
+
+.project-admin-summary span {
+  color: var(--text-muted, #8d9aaf);
+  font-size: 11px;
+}
+
+.project-admin-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.project-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.project-admin-panel .button-danger {
+  border: 1px solid rgba(241, 43, 47, 0.44);
+  background: rgba(241, 43, 47, 0.09);
+  color: #ff8588;
+}
+
+.project-admin-note {
+  margin-top: 14px;
+  padding: 11px 13px;
+  border: 1px solid rgba(94, 166, 255, 0.18);
+  border-radius: 10px;
+  color: var(--text-muted, #8d9aaf);
+  font-size: 12px;
+}
+
+@media (max-width: 800px) {
+  .project-admin-selector,
+  .project-admin-form,
+  .project-admin-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================
+   AUTH / RBAC
+   ========================================================== */
+
+.auth-loading-screen,
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 80% 0%, rgba(241, 43, 47, 0.18), transparent 30%),
+    radial-gradient(circle at 10% 100%, rgba(94, 166, 255, 0.10), transparent 28%),
+    var(--bg);
+}
+
+.auth-loading-screen {
+  align-content: center;
+  gap: 18px;
+  color: var(--text-muted);
+}
+
+.auth-loading-screen img {
+  width: min(220px, 60vw);
+}
+
+.login-card {
+  width: min(480px, 100%);
+  padding: 30px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #121c2f 0%, #0d1525 100%);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.35);
+}
+
+.login-brand {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 20px;
+  align-items: center;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.login-brand img {
+  width: 120px;
+  height: auto;
+}
+
+.login-brand h1,
+.login-heading h2 {
+  margin: 0;
+}
+
+.login-brand p,
+.login-heading p,
+.login-security-note,
+.muted-text {
+  color: var(--text-muted);
+}
+
+.login-eyebrow,
+.page-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.login-heading {
+  margin: 24px 0 18px;
+}
+
+.login-heading p {
+  margin: 6px 0 0;
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+}
+
+.login-submit {
+  width: 100%;
+  min-height: 44px;
+}
+
+.login-security-note {
+  margin: 18px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.alert {
+  margin: 12px 0;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.alert-error {
+  border-color: rgba(241, 43, 47, 0.38);
+  background: rgba(241, 43, 47, 0.09);
+  color: #ffb3b5;
+}
+
+.alert-success {
+  border-color: rgba(62, 207, 142, 0.35);
+  background: rgba(62, 207, 142, 0.08);
+  color: #9be9c5;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 6px 10px 6px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.user-chip:hover {
+  border-color: #44536c;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.user-chip-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(241, 43, 47, 0.16);
+  color: #fff;
+  font-weight: 900;
+}
+
+.user-chip-copy {
+  display: grid;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.user-chip-copy strong {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.user-chip-copy small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.auth-sidebar-footer strong,
+.auth-sidebar-footer span {
+  display: block;
+}
+
+.read-only-banner {
+  margin: 14px 24px 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(94, 166, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(94, 166, 255, 0.08);
+  color: #b9d7ff;
+  font-size: 12px;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.2fr);
+  gap: 18px;
+}
+
+.account-summary {
+  margin: 0;
+}
+
+.account-summary > div {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.account-summary dt {
+  color: var(--text-muted);
+}
+
+.account-summary dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.role-badge,
+.status-dot-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.role-admin {
+  border-color: rgba(241, 43, 47, 0.35);
+  color: #ff9ea0;
+}
+
+.role-operator {
+  border-color: rgba(94, 166, 255, 0.35);
+  color: #9fcaff;
+}
+
+.role-viewer {
+  border-color: rgba(141, 154, 175, 0.35);
+  color: #bcc7d7;
+}
+
+.status-dot-label.active {
+  border-color: rgba(62, 207, 142, 0.35);
+  color: #9be9c5;
+}
+
+.status-dot-label.inactive {
+  color: var(--text-muted);
+}
+
+.user-create-card,
+.user-list-card {
+  margin-top: 18px;
+}
+
+.user-create-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.user-table-wrap {
+  overflow-x: auto;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+}
+
+.user-table th,
+.user-table td {
+  padding: 13px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.user-table th {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.user-table td {
+  font-size: 13px;
+}
+
+.user-username {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.table-input,
+.table-select {
+  width: 100%;
+  min-width: 130px;
+}
+
+.switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+  .topbar-actions .user-chip-copy,
+  .logout-button {
+    display: none;
+  }
+
+  .account-grid,
+  .user-create-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-card {
+    padding: 22px;
+  }
+
+  .login-brand {
+    grid-template-columns: 1fr;
+  }
+
+  .login-brand img {
+    width: 150px;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .user-chip {
+    padding-right: 7px;
+  }
+
+  .read-only-banner {
+    margin: 10px 12px 0;
+  }
+}
+
+
+.auth-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 6, 14, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.auth-modal {
+  width: min(440px, 100%);
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #121c2f 0%, #0d1525 100%);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.auth-modal h2 {
+  margin-top: 0;
+}
+
+.auth-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}

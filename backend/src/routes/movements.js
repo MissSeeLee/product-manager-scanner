@@ -127,171 +127,35 @@ async function insertMovement(
 }
 
 // --------------------------------------------------
-// ISSUE: IN_STOCK -> IN_USE
+// ISSUE / RETURN
 // --------------------------------------------------
-router.post("/:id/issue", async (req, res) => {
+// Lifecycle integrity is owned by /api/operations. Keeping mutation logic in
+// two route families allowed direct item actions to bypass operation history
+// and current_issue_operation_id/sourceOperationId protection.
+router.post("/:id/issue", (req, res) => {
   const id = parseId(req.params.id);
 
   if (!id) {
     return invalidId(res);
   }
 
-  const toLocation = cleanText(req.body?.toLocation);
-
-  if (!toLocation) {
-    return res.status(400).json({
-      code: "LOCATION_REQUIRED",
-      message: "กรุณาระบุตำแหน่งที่นำอุปกรณ์ไปใช้งาน",
-    });
-  }
-
-  let client;
-
-  try {
-    client = await pool.connect();
-    await client.query("BEGIN");
-
-    const item = await getLockedItem(client, id);
-
-    if (!item) {
-      await rollbackQuietly(client);
-      return itemNotFound(res);
-    }
-
-    if (item.current_status !== "IN_STOCK") {
-      await rollbackQuietly(client);
-      return invalidState(res, "เบิกใช้งานได้เฉพาะอุปกรณ์ที่อยู่ในคลัง");
-    }
-
-    const movement = await insertMovement(client, {
-      inventoryItemId: id,
-      movementType: "ISSUE",
-      performedBy: req.body?.performedBy,
-      fromLocation: item.current_location,
-      toLocation,
-      note: req.body?.note,
-    });
-
-    const updated = await client.query(
-      `
-        UPDATE inventory_items
-        SET
-          current_status = 'IN_USE',
-          current_location = $1,
-          updated_at = NOW()
-        WHERE id = $2
-        RETURNING *
-      `,
-      [toLocation, id],
-    );
-
-    await client.query("COMMIT");
-
-    return res.status(201).json({
-      message: "เบิกอุปกรณ์ไปใช้งานเรียบร้อย",
-      data: {
-        item: updated.rows[0],
-        movement,
-      },
-    });
-  } catch (error) {
-    if (client) {
-      await rollbackQuietly(client);
-    }
-
-    return movementFailed(
-      res,
-      "ISSUE_FAILED",
-      "ไม่สามารถเบิกอุปกรณ์ไปใช้งานได้",
-      error,
-    );
-  } finally {
-    client?.release();
-  }
+  return res.status(409).json({
+    code: "USE_OPERATION_WORKFLOW",
+    message: "กรุณาเบิกอุปกรณ์ผ่าน Operation workflow",
+  });
 });
 
-// --------------------------------------------------
-// RETURN: IN_USE -> IN_STOCK
-// --------------------------------------------------
-router.post("/:id/return", async (req, res) => {
+router.post("/:id/return", (req, res) => {
   const id = parseId(req.params.id);
 
   if (!id) {
     return invalidId(res);
   }
 
-  const toLocation = cleanText(req.body?.toLocation);
-
-  if (!toLocation) {
-    return res.status(400).json({
-      code: "LOCATION_REQUIRED",
-      message: "กรุณาระบุตำแหน่งที่รับคืนอุปกรณ์",
-    });
-  }
-
-  let client;
-
-  try {
-    client = await pool.connect();
-    await client.query("BEGIN");
-
-    const item = await getLockedItem(client, id);
-
-    if (!item) {
-      await rollbackQuietly(client);
-      return itemNotFound(res);
-    }
-
-    if (item.current_status !== "IN_USE") {
-      await rollbackQuietly(client);
-      return invalidState(res, "รับคืนเข้าคลังได้เฉพาะอุปกรณ์ที่กำลังใช้งาน");
-    }
-
-    const movement = await insertMovement(client, {
-      inventoryItemId: id,
-      movementType: "RETURN",
-      performedBy: req.body?.performedBy,
-      fromLocation: item.current_location,
-      toLocation,
-      note: req.body?.note,
-    });
-
-    const updated = await client.query(
-      `
-        UPDATE inventory_items
-        SET
-          current_status = 'IN_STOCK',
-          current_location = $1,
-          updated_at = NOW()
-        WHERE id = $2
-        RETURNING *
-      `,
-      [toLocation, id],
-    );
-
-    await client.query("COMMIT");
-
-    return res.status(201).json({
-      message: "รับคืนอุปกรณ์เข้าคลังเรียบร้อย",
-      data: {
-        item: updated.rows[0],
-        movement,
-      },
-    });
-  } catch (error) {
-    if (client) {
-      await rollbackQuietly(client);
-    }
-
-    return movementFailed(
-      res,
-      "RETURN_FAILED",
-      "ไม่สามารถรับคืนอุปกรณ์เข้าคลังได้",
-      error,
-    );
-  } finally {
-    client?.release();
-  }
+  return res.status(409).json({
+    code: "USE_OPERATION_WORKFLOW",
+    message: "กรุณารับคืนอุปกรณ์ผ่าน Operation workflow",
+  });
 });
 
 // --------------------------------------------------
@@ -427,6 +291,10 @@ router.post("/:id/claim", async (req, res) => {
         SET
           current_status = 'CLAIM',
           current_location = $1,
+          current_project_id = NULL,
+          current_issue_operation_id = NULL,
+          current_responsible_person = NULL,
+          expected_return_date = NULL,
           updated_at = NOW()
         WHERE id = $2
         RETURNING *
@@ -511,6 +379,10 @@ router.post("/:id/claim-return", async (req, res) => {
         SET
           current_status = 'IN_STOCK',
           current_location = $1,
+          current_project_id = NULL,
+          current_responsible_person = NULL,
+          expected_return_date = NULL,
+          current_issue_operation_id = NULL,
           updated_at = NOW()
         WHERE id = $2
         RETURNING *
@@ -647,6 +519,10 @@ router.post("/:id/replaced", async (req, res) => {
         UPDATE inventory_items
         SET
           current_status = 'REPLACED',
+          current_project_id = NULL,
+          current_responsible_person = NULL,
+          expected_return_date = NULL,
+          current_issue_operation_id = NULL,
           updated_at = NOW()
         WHERE id = $1
         RETURNING *
@@ -740,6 +616,10 @@ router.post("/:id/retire", async (req, res) => {
         SET
           current_status = 'RETIRED',
           current_location = $1,
+          current_project_id = NULL,
+          current_responsible_person = NULL,
+          expected_return_date = NULL,
+          current_issue_operation_id = NULL,
           updated_at = NOW()
         WHERE id = $2
         RETURNING *

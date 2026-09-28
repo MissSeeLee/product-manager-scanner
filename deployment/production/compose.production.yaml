@@ -1,0 +1,81 @@
+name: assetops-production
+
+services:
+  postgres:
+    image: postgres:18.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - private
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: deployment/production/Dockerfile.backend
+    restart: unless-stopped
+    env_file:
+      - ../../.env.production
+    environment:
+      NODE_ENV: production
+      BACKEND_PORT: 3001
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      PUBLIC_POSTGRES_HOST: postgres
+      PUBLIC_POSTGRES_PORT: 5432
+      ASSETOPS_SECURE_COOKIES: "1"
+      ASSETOPS_TRUST_PROXY: "1"
+    expose:
+      - "3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - private
+      - edge
+
+  edge:
+    build:
+      context: ../..
+      dockerfile: deployment/production/Dockerfile.edge
+    restart: unless-stopped
+    environment:
+      MANAGER_DOMAIN: ${MANAGER_DOMAIN}
+      VIEWER_DOMAIN: ${VIEWER_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - edge
+
+networks:
+  private:
+    internal: true
+  edge:
+
+volumes:
+  postgres_data:
+    external: true
+    name: ${POSTGRES_VOLUME_NAME}
+  caddy_data:
+  caddy_config:

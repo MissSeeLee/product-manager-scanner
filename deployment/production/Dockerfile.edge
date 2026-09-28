@@ -1,0 +1,3 @@
+FROM caddy:2-alpine
+COPY deployment/production/Caddyfile /etc/caddy/Caddyfile
+COPY viewer/ /srv/assetops/viewer/

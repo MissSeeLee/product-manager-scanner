@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>AskMe AssetOps · Public Viewer</title>
+  <link rel="icon" href="./askme-logo.png" />
+  <link rel="stylesheet" href="./viewer.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img
+          class="askme-logo"
+          src="./askme-logo.png"
+          alt="AskMe Solutions & Consultants Co., Ltd."
+        />
+        <div class="product-lockup">
+          <div class="product-name">AssetOps</div>
+          <div class="product-subtitle">Enterprise Asset Management</div>
+        </div>
+      </div>
+
+      <div class="viewer-chip">
+        <span class="viewer-chip-dot"></span>
+        PUBLIC VIEWER
+      </div>
+
+      <nav class="sidebar-nav" aria-label="เมนู Public Viewer">
+        <a class="nav-item active" href="#overview">
+          <span class="nav-icon">⌂</span>
+          <span>ภาพรวม</span>
+        </a>
+        <a class="nav-item" href="#assets">
+          <span class="nav-icon">▦</span>
+          <span>รายการอุปกรณ์</span>
+        </a>
+        <a class="nav-item" href="#activity">
+          <span class="nav-icon">↻</span>
+          <span>ความเคลื่อนไหว</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="readonly-panel">
+          <div class="readonly-title">
+            <span class="readonly-dot"></span>
+            READ ONLY
+          </div>
+          <p>ข้อมูลสำหรับตรวจสอบเท่านั้น ไม่มีสิทธิ์เบิก คืน ย้าย เคลม แก้ไข หรือลบข้อมูล</p>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-shell">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">ASKME · IT ASSET OPERATIONS</div>
+          <h1>Public Asset Viewer</h1>
+          <p>มุมมองสำหรับตรวจสอบสถานะและประวัติอุปกรณ์แบบอ่านอย่างเดียว</p>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="readonly-badge">
+            <span class="readonly-dot"></span>
+            READ ONLY
+          </div>
+          <button id="refreshButton" class="button primary" type="button">
+            รีเฟรชข้อมูล
+          </button>
+        </div>
+      </header>
+
+      <main class="content">
+        <section id="overview" class="status-strip">
+          <div>
+            <strong>AskMe AssetOps Public Viewer</strong>
+            <span>ข้อมูลจาก Public API และฐานข้อมูล Read-only</span>
+          </div>
+          <div id="lastUpdated" class="last-updated">กำลังโหลด…</div>
+        </section>
+
+        <section class="kpi-grid" aria-label="สรุปสถานะอุปกรณ์">
+          <article class="kpi-card">
+            <div class="kpi-icon total">▦</div>
+            <div>
+              <span class="kpi-label">อุปกรณ์ทั้งหมด</span>
+              <strong id="kpiTotal">—</strong>
+              <span class="kpi-foot">SERIAL NUMBER</span>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon stock">✓</div>
+            <div>
+              <span class="kpi-label">พร้อมใช้งาน</span>
+              <strong id="kpiStock">—</strong>
+              <span class="kpi-foot">IN_STOCK</span>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon use">↗</div>
+            <div>
+              <span class="kpi-label">กำลังใช้งาน</span>
+              <strong id="kpiUse">—</strong>
+              <span class="kpi-foot">IN_USE</span>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon claim">!</div>
+            <div>
+              <span class="kpi-label">อยู่ระหว่างเคลม</span>
+              <strong id="kpiClaim">—</strong>
+              <span class="kpi-foot">CLAIM</span>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon terminal">×</div>
+            <div>
+              <span class="kpi-label">สิ้นสุดการใช้งาน</span>
+              <strong id="kpiTerminal">—</strong>
+              <span class="kpi-foot">REPLACED / RETIRED</span>
+            </div>
+          </article>
+        </section>
+
+        <section class="workspace-grid">
+          <section id="assets" class="panel main-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">ASSET EXPLORER</span>
+                <h2>รายการอุปกรณ์</h2>
+                <p id="resultMeta" class="muted">กำลังโหลดข้อมูล…</p>
+              </div>
+              <div class="panel-mode">VIEW ONLY</div>
+            </div>
+
+            <div class="filters">
+              <label class="search-field">
+                <span>ค้นหา</span>
+                <input id="searchInput" type="search" placeholder="Serial / รุ่น / Brand / Part Number / Location" autocomplete="off" />
+              </label>
+
+              <label>
+                <span>สถานะ</span>
+                <select id="statusFilter">
+                  <option value="">ทุกสถานะ</option>
+                </select>
+              </label>
+
+              <label>
+                <span>ตำแหน่ง</span>
+                <select id="locationFilter">
+                  <option value="">ทุกตำแหน่ง</option>
+                </select>
+              </label>
+
+              <button id="clearFilters" class="button secondary" type="button">ล้างตัวกรอง</button>
+            </div>
+
+            <div id="loadingState" class="state-box">กำลังโหลดข้อมูลจาก AssetOps…</div>
+            <div id="errorState" class="state-box error hidden"></div>
+
+            <div id="tableWrap" class="table-wrap hidden">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Serial Number</th>
+                    <th>รุ่น / อุปกรณ์</th>
+                    <th>Brand</th>
+                    <th>สถานะ</th>
+                    <th>ตำแหน่ง</th>
+                    <th>กำหนดคืน</th>
+                  </tr>
+                </thead>
+                <tbody id="assetTableBody"></tbody>
+              </table>
+            </div>
+
+            <div id="emptyState" class="state-box hidden">
+              ไม่พบอุปกรณ์ที่ตรงกับตัวกรอง
+            </div>
+          </section>
+
+          <aside id="activity" class="panel activity-panel">
+            <div class="panel-heading compact">
+              <div>
+                <span class="section-kicker">RECENT ACTIVITY</span>
+                <h2>ความเคลื่อนไหวล่าสุด</h2>
+              </div>
+            </div>
+            <div id="recentList" class="activity-list">
+              <div class="state-box slim">กำลังโหลด…</div>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
+  <aside id="detailDrawer" class="detail-drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div>
+        <span class="section-kicker">ASSET DETAIL</span>
+        <h2 id="drawerSerial">—</h2>
+      </div>
+      <button id="closeDrawer" class="icon-button" type="button" aria-label="ปิด">×</button>
+    </div>
+
+    <div class="drawer-readonly-note">
+      <span class="readonly-dot"></span>
+      รายละเอียดนี้เป็นมุมมองแบบ Read-only
+    </div>
+
+    <div id="drawerContent" class="drawer-content"></div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-heading">
+        <h3>ประวัติการเคลื่อนไหว</h3>
+        <span class="panel-mode">VIEW ONLY</span>
+      </div>
+      <div id="drawerHistory" class="history-list"></div>
+    </div>
+  </aside>
+
+  <script src="./viewer.js" defer></script>
+</body>
+</html>

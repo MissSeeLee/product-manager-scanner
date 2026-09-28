@@ -226,3 +226,211 @@
     margin-right: 7px;
   }
 }
+
+/* ---------- v4 assignment context ---------- */
+
+.asset-summary-highlight dd {
+  color: #b8c9ff;
+}
+
+.asset-action-list-priority {
+  margin-bottom: 12px;
+}
+
+.asset-more-actions {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.asset-more-actions summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 650;
+  list-style: none;
+}
+
+.asset-more-actions summary::-webkit-details-marker {
+  display: none;
+}
+
+.asset-more-actions summary::after {
+  content: "+";
+  color: var(--text-faint);
+  font-size: 18px;
+}
+
+.asset-more-actions[open] summary::after {
+  content: "−";
+}
+
+.asset-more-action-list {
+  margin-top: 8px;
+}
+
+.asset-bulk-hint {
+  margin-top: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(91, 140, 255, 0.035);
+}
+
+.asset-bulk-hint strong {
+  font-size: 12px;
+}
+
+.asset-bulk-hint span {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ---------- Single-asset action dialog / mobile sheet ---------- */
+
+.movement-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 8, 12, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.movement-dialog {
+  width: min(680px, 100%);
+  max-height: min(820px, calc(100dvh - 48px));
+  overflow: auto;
+  border: 1px solid #343d4c;
+  border-radius: 18px;
+  background: #151b24;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+  outline: none;
+}
+
+.movement-dialog-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 20px 22px 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(21, 27, 36, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.movement-dialog-header h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.movement-dialog-header p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.movement-dialog-serial {
+  color: #93adff;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.movement-dialog-close {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.movement-dialog-close:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.movement-dialog-body {
+  padding: 20px 22px 22px;
+}
+
+.movement-action-form {
+  gap: 15px;
+}
+
+.movement-action-form .field-hint {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.movement-dialog-actions {
+  position: sticky;
+  bottom: -22px;
+  z-index: 1;
+  margin: 6px -22px -22px;
+  padding: 14px 22px max(14px, env(safe-area-inset-bottom, 0px));
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  background: rgba(21, 27, 36, 0.97);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 640px) {
+  .movement-dialog-backdrop {
+    padding: 0;
+    align-items: end;
+  }
+
+  .movement-dialog {
+    width: 100%;
+    max-height: 92dvh;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .movement-dialog-header,
+  .movement-dialog-body {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .movement-action-form {
+    grid-template-columns: 1fr;
+  }
+
+  .movement-action-form .form-field-full {
+    grid-column: 1;
+  }
+
+  .movement-dialog-actions {
+    margin-right: -18px;
+    margin-left: -18px;
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .movement-dialog-actions .button {
+    flex: 1 1 0;
+  }
+}

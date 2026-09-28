@@ -10,12 +10,38 @@ function postMovement(id, action, payload) {
   });
 }
 
+function postCanonicalOperation(type, id, payload) {
+  return request("/api/operations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type,
+      assetIds: [Number(id)],
+      destinationLocation: payload?.toLocation,
+      performedBy: payload?.performedBy,
+      note: payload?.note,
+      ...(type === "ISSUE"
+        ? {
+            projectId: payload?.projectId ?? null,
+            responsiblePerson: payload?.responsiblePerson,
+            expectedReturnDate: payload?.expectedReturnDate ?? null,
+          }
+        : {}),
+      ...(type === "RETURN" && payload?.sourceOperationId
+        ? { sourceOperationId: Number(payload.sourceOperationId) }
+        : {}),
+    }),
+  });
+}
+
 export function issueInventory(id, payload) {
-  return postMovement(id, "issue", payload);
+  return postCanonicalOperation("ISSUE", id, payload);
 }
 
 export function returnInventory(id, payload) {
-  return postMovement(id, "return", payload);
+  return postCanonicalOperation("RETURN", id, payload);
 }
 
 export function moveInventory(id, payload) {

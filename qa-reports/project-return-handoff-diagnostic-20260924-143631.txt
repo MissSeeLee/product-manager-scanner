@@ -1,0 +1,272 @@
+﻿AssetOps Project RETURN Handoff Diagnostic
+Generated: 09/24/2026 14:36:32
+Project: C:\Users\artid\Desktop\product-manager-scanner
+
+=== PROJECT / RETURN RELATED FILES ===
+
+FILE: frontend\src\features\dashboard\pages\DashboardPage.jsx
+  L85 [/operations/new] <Link to="/operations/new?type=RETURN" className="button button-secondary">
+
+FILE: frontend\src\features\operations\pages\OperationDetailPage.jsx
+  L84 [/operations/new] navigate("/operations/new?type=RETURN", {
+  L87 [sourceOperationId] sourceOperationId: operation.id,
+
+FILE: frontend\src\features\operations\pages\OperationWorkspacePage.jsx
+  L41 [sourceOperationId] const sourceOperationId = initialState.sourceOperationId || null;
+  L544 ["RETURN"] sourceOperationId: type === "RETURN" ? sourceOperationId : null,
+
+FILE: frontend\src\features\projects\pages\ProjectDetailPage.jsx
+  L12 [navigate(] const navigate = useNavigate();
+  L14 [selectedIds] const [selectedIds, setSelectedIds] = useState([]);
+  L44 [selectedIds] setSelectedIds((current) =>
+  L61 [selectedIds] .filter((item) => selectedIds.includes(Number(item.id)) && item.current_status === "IN_USE")
+  L81 [/operations/new] onClick={() => navigate("/operations/new?type=ISSUE", { state: { projectId: project.id } })}
+  L111 [selectedIds] <span>à¹€à¸¥à¸·à¸­à¸ {selectedIds.length}</span>
+  L116 [/operations/new] onClick={() => navigate("/operations/new?type=RETURN", { state: { assetIds: returnableSelected } })}
+  L131 [selectedIds] checked={selectedIds.includes(Number(item.id))}
+
+=== CONTEXT AROUND RETURN NAVIGATION ===
+
+--- frontend\src\features\dashboard\pages\DashboardPage.jsx:82 ---
+     75:           <h2 className="hero-title">à¹€à¸£à¸´à¹ˆà¸¡à¸‡à¸²à¸™à¸›à¸£à¸°à¸ˆà¸³à¸§à¸±à¸™à¸ˆà¸²à¸à¸•à¸£à¸‡à¸™à¸µà¹‰</h2>
+     76:           <p className="hero-description">
+     77:             à¹€à¸šà¸´à¸ à¸„à¸·à¸™ à¹à¸¥à¸°à¸ªà¹à¸à¸™à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¹‚à¸”à¸¢à¹„à¸¡à¹ˆà¸•à¹‰à¸­à¸‡à¹€à¸›à¸´à¸”à¸£à¸²à¸¢à¸¥à¸°à¹€à¸­à¸µà¸¢à¸”à¸—à¸µà¸¥à¸° Serial
+     78:           </p>
+     79:         </div>
+     80: 
+     81:         <div className="hero-actions dashboard-quick-actions">
+>>   82:           <Link to="/operations/new?type=ISSUE" className="button button-primary">
+     83:             + à¹€à¸šà¸´à¸à¸­à¸¸à¸›à¸à¸£à¸“à¹Œ
+     84:           </Link>
+     85:           <Link to="/operations/new?type=RETURN" className="button button-secondary">
+     86:             à¸£à¸±à¸šà¸„à¸·à¸™
+     87:           </Link>
+     88:           <Link to="/scanner" className="button button-secondary">
+     89:             à¸ªà¹à¸à¸™
+     90:           </Link>
+     91:         </div>
+     92:       </div>
+     93: 
+     94:       <FeedbackMessage type="error">{error}</FeedbackMessage>
+     95: 
+
+--- frontend\src\features\dashboard\pages\DashboardPage.jsx:85 ---
+     78:           </p>
+     79:         </div>
+     80: 
+     81:         <div className="hero-actions dashboard-quick-actions">
+     82:           <Link to="/operations/new?type=ISSUE" className="button button-primary">
+     83:             + à¹€à¸šà¸´à¸à¸­à¸¸à¸›à¸à¸£à¸“à¹Œ
+     84:           </Link>
+>>   85:           <Link to="/operations/new?type=RETURN" className="button button-secondary">
+     86:             à¸£à¸±à¸šà¸„à¸·à¸™
+     87:           </Link>
+     88:           <Link to="/scanner" className="button button-secondary">
+     89:             à¸ªà¹à¸à¸™
+     90:           </Link>
+     91:         </div>
+     92:       </div>
+     93: 
+     94:       <FeedbackMessage type="error">{error}</FeedbackMessage>
+     95: 
+     96:       <div className="metric-grid">
+     97:         <Link to="/inventory" className="metric-card metric-card-primary">
+     98:           <span className="metric-label">à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”</span>
+
+--- frontend\src\features\inventory\pages\InventoryPage.jsx:334 ---
+    327:         type,
+    328:         assetIds: selectedIds,
+    329:         selectedAssets: selectedAssetsForOperation,
+    330:         createdAt: Date.now(),
+    331:       }),
+    332:     );
+    333: 
+>>  334:     navigate(`/operations/new?type=${type}&assetIds=${encodeURIComponent(selectedIds.join(","))}`, {
+    335:       state: { assetIds: selectedIds },
+    336:     });
+    337:   }
+    338: 
+    339:   const selectedItems = items.filter((item) => selectedIds.includes(Number(item.id)));
+    340:   const canIssue =
+    341:     selectedItems.length > 0 &&
+    342:     selectedItems.every((item) => item.current_status === "IN_STOCK");
+    343:   const canReturn =
+    344:     selectedItems.length > 0 &&
+    345:     selectedItems.every((item) => item.current_status === "IN_USE");
+    346:   const canMove =
+    347:     selectedItems.length > 0 &&
+
+--- frontend\src\features\operations\pages\OperationDetailPage.jsx:84 ---
+     77:         </div>
+     78: 
+     79:         {canReturnFromIssue && (
+     80:           <button
+     81:             type="button"
+     82:             className="button button-primary"
+     83:             onClick={() =>
+>>   84:               navigate("/operations/new?type=RETURN", {
+     85:                 state: {
+     86:                   assetIds: returnIds,
+     87:                   sourceOperationId: operation.id,
+     88:                 },
+     89:               })
+     90:             }
+     91:           >
+     92:             à¸£à¸±à¸šà¸„à¸·à¸™à¸—à¸µà¹ˆà¸¢à¸±à¸‡à¸„à¹‰à¸²à¸‡ {returnIds.length} à¸£à¸²à¸¢à¸à¸²à¸£
+     93:           </button>
+     94:         )}
+     95:       </div>
+     96: 
+     97:       <FeedbackMessage type="error">{error}</FeedbackMessage>
+
+--- frontend\src\features\operations\pages\OperationDetailPage.jsx:87 ---
+     80:           <button
+     81:             type="button"
+     82:             className="button button-primary"
+     83:             onClick={() =>
+     84:               navigate("/operations/new?type=RETURN", {
+     85:                 state: {
+     86:                   assetIds: returnIds,
+>>   87:                   sourceOperationId: operation.id,
+     88:                 },
+     89:               })
+     90:             }
+     91:           >
+     92:             à¸£à¸±à¸šà¸„à¸·à¸™à¸—à¸µà¹ˆà¸¢à¸±à¸‡à¸„à¹‰à¸²à¸‡ {returnIds.length} à¸£à¸²à¸¢à¸à¸²à¸£
+     93:           </button>
+     94:         )}
+     95:       </div>
+     96: 
+     97:       <FeedbackMessage type="error">{error}</FeedbackMessage>
+     98:       <FeedbackMessage type="success">{location.state?.successMessage}</FeedbackMessage>
+     99: 
+    100:       <section className="card operation-detail-summary">
+
+--- frontend\src\features\operations\pages\OperationsPage.jsx:69 ---
+     62:         </div>
+     63:       </div>
+     64: 
+     65:       <FeedbackMessage type="error">{error}</FeedbackMessage>
+     66: 
+     67:       <section className="operation-launch-grid" aria-label="à¹€à¸£à¸´à¹ˆà¸¡à¸—à¸³à¸£à¸²à¸¢à¸à¸²à¸£">
+     68:         {Object.entries(OPERATION_CONFIG).map(([type, config]) => (
+>>   69:           <Link key={type} to={`/operations/new?type=${type}`} className="operation-launch-card">
+     70:             <span className={`operation-type-mark operation-type-${type.toLowerCase()}`}>
+     71:               {config.shortLabel}
+     72:             </span>
+     73:             <div>
+     74:               <strong>{config.label}</strong>
+     75:               <span>{config.description}</span>
+     76:             </div>
+     77:             <span className="operation-launch-arrow">â†’</span>
+     78:           </Link>
+     79:         ))}
+     80:       </section>
+     81: 
+     82:       <section className="operations-attention-grid">
+
+--- frontend\src\features\operations\pages\OperationWorkspacePage.jsx:41 ---
+     34: }
+     35: 
+     36: function OperationWorkspacePage() {
+     37:   const location = useLocation();
+     38:   const navigate = useNavigate();
+     39:   const [searchParams, setSearchParams] = useSearchParams();
+     40:   const [initialState] = useState(() => location.state || {});
+>>   41:   const sourceOperationId = initialState.sourceOperationId || null;
+     42:   const didInitializeRef = useRef(false);
+     43: 
+     44:   const [type, setType] = useState(() => typeFromParams(searchParams));
+     45:   const config = OPERATION_CONFIG[type];
+     46: 
+     47:   const [projects, setProjects] = useState([]);
+     48:   const [locations, setLocations] = useState([]);
+     49:   const [selectedAssets, setSelectedAssets] = useState(() => {
+     50:     try {
+     51:       const raw = sessionStorage.getItem(
+     52:         "assetops.pending-operation-selection.v6",
+     53:       );
+     54: 
+
+--- frontend\src\features\operations\pages\OperationWorkspacePage.jsx:544 ---
+    537:         referenceCode: referenceCode.trim(),
+    538:         responsiblePerson: type === "ISSUE" ? responsiblePerson.trim() : null,
+    539:         destinationLocation,
+    540:         expectedReturnDate: type === "ISSUE" ? expectedReturnDate || null : null,
+    541:         performedBy: performedBy.trim(),
+    542:         note: note.trim(),
+    543:         clientRequestId,
+>>  544:         sourceOperationId: type === "RETURN" ? sourceOperationId : null,
+    545:       });
+    546: 
+    547:       localStorage.setItem("assetops.last-performed-by", performedBy.trim());
+    548:       localStorage.removeItem(DRAFT_KEY);
+    549:       setClientRequestId(newRequestId());
+    550: 
+    551:       const operationId = response?.data?.operation?.id;
+    552: 
+    553:       if (operationId) {
+    554:         navigate(`/operations/${operationId}`, {
+    555:           replace: true,
+    556:           state: { successMessage: response.message },
+    557:         });
+
+--- frontend\src\features\projects\pages\ProjectDetailPage.jsx:81 ---
+     74:             {[project.project_code, project.responsible_person, project.default_location].filter(Boolean).join(" Â· ")}
+     75:           </p>
+     76:         </div>
+     77: 
+     78:         <button
+     79:           type="button"
+     80:           className="button button-primary"
+>>   81:           onClick={() => navigate("/operations/new?type=ISSUE", { state: { projectId: project.id } })}
+     82:         >
+     83:           + à¹€à¸šà¸´à¸à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¹€à¸‚à¹‰à¸²à¹‚à¸„à¸£à¸‡à¸à¸²à¸£
+     84:         </button>
+     85:       </div>
+     86: 
+     87:       <FeedbackMessage type="error">{error}</FeedbackMessage>
+     88: 
+     89:       <section className="project-overview-strip">
+     90:         <div>
+     91:           <span>à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸„à¸‡à¸„à¹‰à¸²à¸‡</span>
+     92:           <strong>{assets.length}</strong>
+     93:         </div>
+     94:         <div>
+
+--- frontend\src\features\projects\pages\ProjectDetailPage.jsx:116 ---
+    109:           </div>
+    110:           <div className="project-selection-actions">
+    111:             <span>à¹€à¸¥à¸·à¸­à¸ {selectedIds.length}</span>
+    112:             <button
+    113:               type="button"
+    114:               className="button button-primary"
+    115:               disabled={returnableSelected.length === 0}
+>>  116:               onClick={() => navigate("/operations/new?type=RETURN", { state: { assetIds: returnableSelected } })}
+    117:             >
+    118:               à¸£à¸±à¸šà¸„à¸·à¸™à¸—à¸µà¹ˆà¹€à¸¥à¸·à¸­à¸ {returnableSelected.length > 0 ? `(${returnableSelected.length})` : ""}
+    119:             </button>
+    120:           </div>
+    121:         </div>
+    122: 
+    123:         {assets.length === 0 ? (
+    124:           <div className="compact-empty">à¹„à¸¡à¹ˆà¸¡à¸µà¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸„à¸‡à¸„à¹‰à¸²à¸‡à¹ƒà¸™à¹‚à¸„à¸£à¸‡à¸à¸²à¸£à¸™à¸µà¹‰</div>
+    125:         ) : (
+    126:           <div className="project-asset-list">
+    127:             {assets.map((item) => (
+    128:               <label key={item.id} className="project-asset-row">
+    129:                 <input
+
+=== ROUTER PROJECT ROUTES ===
+
+FILE: frontend\src\app\App.jsx
+  L10 { to: "/projects", label: "โครงการ / งาน", icon: "projects" },
+  L37 { match: /^\/projects\/[^/]+$/, title: "รายละเอียดโครงการ" },
+  L38 { match: /^\/projects/, title: "โครงการ / งาน" },
+  L90 if (name === "projects") {
+
+FILE: frontend\src\app\router.jsx
+  L13 import ProjectDetailPage from "../features/projects/pages/ProjectDetailPage";
+  L14 import ProjectsPage from "../features/projects/pages/ProjectsPage";
+  L28 { path: "projects", element: <ProjectsPage /> },
+  L29 { path: "projects/:id", element: <ProjectDetailPage /> },

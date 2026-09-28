@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+﻿import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   createInventoryItem,
@@ -9,6 +9,7 @@ import {
 import { createProduct, getProducts } from "../../products/api/productApi";
 
 import AssetExplorerToolbar from "../components/AssetExplorerToolbar";
+import BulkSelectionBar from "../components/BulkSelectionBar";
 import CsvImportPanel from "../components/CsvImportPanel";
 import InventoryForm from "../components/InventoryForm";
 import InventoryTable from "../components/InventoryTable";
@@ -33,6 +34,7 @@ function queryFromSearchParams(searchParams) {
     receivedFrom: searchParams.get("receivedFrom") || "",
     receivedTo: searchParams.get("receivedTo") || "",
     warranty: searchParams.get("warranty") || "all",
+    returnDue: searchParams.get("returnDue") || "",
     sort: searchParams.get("sort") || "created_at",
     order: searchParams.get("order") || "desc",
     page: Math.max(1, Number(searchParams.get("page") || 1) || 1),
@@ -51,6 +53,7 @@ function apiParamsFromQuery(query) {
     receivedFrom: query.receivedFrom,
     receivedTo: query.receivedTo,
     warranty: query.warranty === "all" ? "" : query.warranty,
+    returnDue: query.returnDue,
     timezoneOffsetMinutes: -new Date().getTimezoneOffset(),
     sort: query.sort,
     order: query.order,
@@ -70,11 +73,13 @@ function hasActiveFilters(query) {
       query.serialPrefix ||
       query.receivedFrom ||
       query.receivedTo ||
-      (query.warranty && query.warranty !== "all"),
+      (query.warranty && query.warranty !== "all") ||
+      query.returnDue,
   );
 }
 
 function InventoryPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryKey = searchParams.toString();
   const query = useMemo(
@@ -99,6 +104,31 @@ function InventoryPage() {
 
   const [intakeMode, setIntakeMode] = useState(null);
   const [reloadVersion, setReloadVersion] = useState(0);
+  const selectionKey = `${queryKey}::${reloadVersion}`;
+  const [selectionState, setSelectionState] = useState(() => ({
+    key: selectionKey,
+    ids: [],
+  }));
+
+  const selectedIds =
+    selectionState.key === selectionKey ? selectionState.ids : [];
+
+  function setSelectedIds(nextValue) {
+    setSelectionState((current) => {
+      const currentIds =
+        current.key === selectionKey ? current.ids : [];
+
+      const nextIds =
+        typeof nextValue === "function"
+          ? nextValue(currentIds)
+          : nextValue;
+
+      return {
+        key: selectionKey,
+        ids: nextIds,
+      };
+    });
+  }
 
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -170,6 +200,7 @@ function InventoryPage() {
       cancelled = true;
     };
   }, [queryKey, reloadVersion]);
+
 
   function updateQuery(patch) {
     const next = new URLSearchParams(searchParams);
@@ -262,6 +293,59 @@ function InventoryPage() {
     setSuccessMessage(response?.message || "นำข้อมูลอุปกรณ์เข้าระบบเรียบร้อย");
     setReloadVersion((value) => value + 1);
   }
+
+  function handleToggleSelect(item) {
+    const id = Number(item.id);
+
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id],
+    );
+  }
+
+  function handleToggleSelectAll(selectableItems) {
+    const ids = selectableItems.map((item) => Number(item.id));
+    const allSelected = ids.length > 0 && ids.every((id) => selectedIds.includes(id));
+
+    setSelectedIds(allSelected ? [] : ids);
+  }
+
+  function openBulkOperation(type) {
+    if (selectedIds.length === 0) {
+      return;
+    }
+
+    const selectedAssetsForOperation = items.filter((item) =>
+      selectedIds.includes(Number(item.id)),
+    );
+
+    sessionStorage.setItem(
+      "assetops.pending-operation-selection.v6",
+      JSON.stringify({
+        version: 1,
+        type,
+        assetIds: selectedIds,
+        selectedAssets: selectedAssetsForOperation,
+        createdAt: Date.now(),
+      }),
+    );
+
+    navigate(`/operations/new?type=${type}&assetIds=${encodeURIComponent(selectedIds.join(","))}`, {
+      state: { assetIds: selectedIds },
+    });
+  }
+
+  const selectedItems = items.filter((item) => selectedIds.includes(Number(item.id)));
+  const canIssue =
+    selectedItems.length > 0 &&
+    selectedItems.every((item) => item.current_status === "IN_STOCK");
+  const canReturn =
+    selectedItems.length > 0 &&
+    selectedItems.every((item) => item.current_status === "IN_USE");
+  const canMove =
+    selectedItems.length > 0 &&
+    selectedItems.every((item) => ["IN_STOCK", "IN_USE", "CLAIM"].includes(item.current_status));
 
   const filtered = hasActiveFilters(query);
   const pageCount = Math.max(1, Math.ceil(meta.total / PAGE_SIZE));
@@ -381,6 +465,9 @@ function InventoryPage() {
               onSort={handleSort}
               hasFilters={filtered}
               onClearFilters={clearFilters}
+              selectedIds={selectedIds}
+              onToggleSelect={handleToggleSelect}
+              onToggleSelectAll={handleToggleSelectAll}
             />
           )}
 
@@ -413,6 +500,17 @@ function InventoryPage() {
               </div>
             </nav>
           )}
+
+          <BulkSelectionBar
+            count={selectedIds.length}
+            canIssue={canIssue}
+            canReturn={canReturn}
+            canMove={canMove}
+            onIssue={() => openBulkOperation("ISSUE")}
+            onReturn={() => openBulkOperation("RETURN")}
+            onMove={() => openBulkOperation("MOVE")}
+            onClear={() => setSelectedIds([])}
+          />
         </>
       )}
     </>
