@@ -57,7 +57,7 @@ function OperationsPage() {
         <div>
           <h1 className="page-title">เบิก / คืน</h1>
           <p className="page-description">
-            ทำรายการหลายอุปกรณ์ด้วยข้อมูลร่วมครั้งเดียว และตรวจสอบย้อนหลังเป็นชุด
+            เลือกประเภทการทำรายการ
           </p>
         </div>
       </div>

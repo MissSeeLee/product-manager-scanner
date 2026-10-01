@@ -5,6 +5,11 @@ import {
   validateBulkInventory,
 } from "../api/inventoryApi";
 import { downloadCsv, parseCsv } from "../../../shared/lib/csv";
+import {
+  createLocation,
+  getLocations,
+  setLocationActive,
+} from "../../locations/api/locationsApi";
 
 const ASSETOPS_TEMPLATE_HEADERS = [
   "SerialNumber",
@@ -74,6 +79,50 @@ function buildRows(sourceRows, mapping) {
       },
     };
   });
+}
+
+async function ensureCsvLocations(rows) {
+  const requested = [
+    ...new Set(
+      rows
+        .map((row) => String(row.currentLocation || "").trim())
+        .filter(Boolean),
+    ),
+  ];
+
+  if (requested.length === 0) {
+    return;
+  }
+
+  const current = await getLocations({ includeInactive: true });
+  const byName = new Map(
+    current.map((location) => [
+      String(location.location_name || "").trim().toLocaleLowerCase(),
+      location,
+    ]),
+  );
+
+  for (const locationName of requested) {
+    const key = locationName.toLocaleLowerCase();
+    const existing = byName.get(key);
+
+    if (existing) {
+      if (existing.is_active === false) {
+        await setLocationActive(existing.id, true);
+        existing.is_active = true;
+      }
+      continue;
+    }
+
+    const created = await createLocation({
+      locationName,
+      locationCode: "",
+    });
+
+    if (created?.data) {
+      byName.set(key, created.data);
+    }
+  }
 }
 
 function CsvImportPanel({ onDone, onCancel }) {
@@ -150,6 +199,7 @@ function CsvImportPanel({ onDone, onCancel }) {
       setSourceRows(parsed.rows);
       setMapping(strictMapping);
 
+      await ensureCsvLocations(rows);
       const response = await validateBulkInventory(rows);
       setValidation(response?.data ?? null);
     } catch (requestError) {
@@ -250,9 +300,7 @@ function CsvImportPanel({ onDone, onCancel }) {
     <section className="card intake-panel">
       <span className="section-kicker">CSV IMPORT</span>
       <h2 className="card-title">นำเข้าข้อมูลอุปกรณ์</h2>
-      <p className="page-description">
-        สำหรับข้อมูลเดิมหลายรุ่น หลายตำแหน่ง และหลายวันที่รับเข้า ระบบจะตรวจสอบก่อนเขียนข้อมูลจริง
-      </p>
+      <p className="page-description">เลือกไฟล์ ตรวจสอบ แล้วนำเข้า</p>
 
       {error && <div className="message message-error">{error}</div>}
 
@@ -277,18 +325,14 @@ function CsvImportPanel({ onDone, onCancel }) {
 
       {fileName && !error && (
         <div className="message message-success">
-          ✓ Header ตรงแบบฟอร์ม AssetOps — Auto-map และตรวจสอบข้อมูลแล้ว
+          ไฟล์พร้อมตรวจสอบ
         </div>
       )}
 
       {validation && (
         <>
           <div className="import-section-heading">
-            <span className="form-step">02</span>
-            <div>
-              <strong>ผลการตรวจสอบ</strong>
-              <span>ต้องไม่มี Error ก่อนเริ่มนำเข้าจริง</span>
-            </div>
+            <div><strong>ตรวจสอบไฟล์</strong></div>
           </div>
 
           <div className="import-summary-grid">
@@ -309,7 +353,7 @@ function CsvImportPanel({ onDone, onCancel }) {
                 </tr>
               </thead>
               <tbody>
-                {validation.rows.slice(0, 100).map((row) => (
+                {(validation.summary.invalid > 0 ? validation.rows.filter((row) => !row.valid).slice(0, 100) : validation.rows.slice(0, 20)).map((row) => (
                   <tr key={row.index}>
                     <td>{row.index + 2}</td>
                     <td className="serial-text">{row.serialNumber || "-"}</td>

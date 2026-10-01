@@ -7,6 +7,7 @@ import {
   getInventoryItems,
 } from "../api/inventoryApi";
 import { createProduct, getProducts } from "../../products/api/productApi";
+import { useCan } from "../../auth/capabilities";
 
 import AssetExplorerToolbar from "../components/AssetExplorerToolbar";
 import BulkSelectionBar from "../components/BulkSelectionBar";
@@ -80,6 +81,8 @@ function hasActiveFilters(query) {
 
 function InventoryPage() {
   const navigate = useNavigate();
+  const canIntake = useCan("asset.intake");
+  const canOperate = useCan("operations.execute");
   const [searchParams, setSearchParams] = useSearchParams();
   const queryKey = searchParams.toString();
   const query = useMemo(
@@ -362,13 +365,15 @@ function InventoryPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          className="button button-primary"
-          onClick={() => setIntakeMode((current) => (current ? null : "choose"))}
-        >
-          {intakeMode ? "← กลับรายการอุปกรณ์" : "+ นำอุปกรณ์เข้าระบบ"}
-        </button>
+        {canIntake && (
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={() => navigate("/inventory/intake")}
+          >
+            + นำอุปกรณ์เข้าระบบ
+          </button>
+        )}
       </div>
 
       <FeedbackMessage type="error">{error}</FeedbackMessage>
@@ -468,6 +473,7 @@ function InventoryPage() {
               selectedIds={selectedIds}
               onToggleSelect={handleToggleSelect}
               onToggleSelectAll={handleToggleSelectAll}
+              selectionEnabled={canOperate}
             />
           )}
 
@@ -501,16 +507,18 @@ function InventoryPage() {
             </nav>
           )}
 
-          <BulkSelectionBar
-            count={selectedIds.length}
-            canIssue={canIssue}
-            canReturn={canReturn}
-            canMove={canMove}
-            onIssue={() => openBulkOperation("ISSUE")}
-            onReturn={() => openBulkOperation("RETURN")}
-            onMove={() => openBulkOperation("MOVE")}
-            onClear={() => setSelectedIds([])}
-          />
+          {canOperate && (
+            <BulkSelectionBar
+              count={selectedIds.length}
+              canIssue={canIssue}
+              canReturn={canReturn}
+              canMove={canMove}
+              onIssue={() => openBulkOperation("ISSUE")}
+              onReturn={() => openBulkOperation("RETURN")}
+              onMove={() => openBulkOperation("MOVE")}
+              onClear={() => setSelectedIds([])}
+            />
+          )}
         </>
       )}
     </>

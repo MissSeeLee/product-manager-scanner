@@ -23,6 +23,8 @@ import MovementTimeline from "../components/MovementTimeline";
 import StatusBadge from "../components/StatusBadge";
 import { getLocations } from "../../locations/api/locationsApi";
 import { getProjects } from "../../projects/api/projectsApi";
+import { useCan } from "../../auth/capabilities";
+import AssetManagementPanel from "../components/AssetManagementPanel";
 
 import { formatDate, formatDateTime } from "../../../shared/lib/formatters";
 
@@ -42,17 +44,17 @@ const ACTION_GROUPS = {
   IN_STOCK: {
     primary: "ISSUE",
     secondary: ["MOVE"],
-    more: ["CLAIM", "RETIRE"],
+    more: [],
   },
   IN_USE: {
     primary: "RETURN",
-    secondary: ["MOVE"],
-    more: ["CLAIM", "RETIRE"],
+    secondary: ["MOVE", "CLAIM"],
+    more: [],
   },
   CLAIM: {
     primary: "CLAIM_RETURN",
-    secondary: ["REPLACED"],
-    more: ["MOVE", "RETIRE"],
+    secondary: ["REPLACED", "RETIRE"],
+    more: [],
   },
 };
 
@@ -83,6 +85,7 @@ function formatWarrantyPeriod(start, end) {
 
 function InventoryDetailPage() {
   const { id } = useParams();
+  const canOperate = useCan("operations.execute");
 
   const [item, setItem] = useState(null);
   const [movements, setMovements] = useState([]);
@@ -170,12 +173,20 @@ function InventoryDetailPage() {
     }
   }
 
+  async function handleAssetChanged() {
+    const refreshed = await fetchDetail(id);
+    setItem(refreshed.item);
+    setMovements(refreshed.movements);
+  }
+
   const actionLayout = useMemo(() => {
     if (!item) {
       return { primary: null, secondary: [], more: [] };
     }
 
-    const available = new Set(ACTIONS_BY_STATUS[item.current_status] ?? []);
+    const available = new Set(
+      canOperate ? ACTIONS_BY_STATUS[item.current_status] ?? [] : [],
+    );
     const preferred = ACTION_GROUPS[item.current_status] ?? {
       primary: null,
       secondary: [],
@@ -187,7 +198,7 @@ function InventoryDetailPage() {
       secondary: preferred.secondary.filter((action) => available.has(action)),
       more: preferred.more.filter((action) => available.has(action)),
     };
-  }, [item]);
+  }, [item, canOperate]);
 
   if (loading) {
     return <div className="card">กำลังโหลดข้อมูลอุปกรณ์...</div>;
@@ -204,7 +215,9 @@ function InventoryDetailPage() {
     );
   }
 
-  const availableActions = ACTIONS_BY_STATUS[item.current_status] ?? [];
+  const availableActions = canOperate
+    ? ACTIONS_BY_STATUS[item.current_status] ?? []
+    : [];
 
   return (
     <>
@@ -318,77 +331,43 @@ function InventoryDetailPage() {
             </strong>
           </div>
         </section>
-
         <aside className="card asset-actions-panel">
           <div className="asset-section-heading">
             <div>
               <h2 className="card-title">การดำเนินการ</h2>
-              <p>จัดการอุปกรณ์ชิ้นนี้ โดยไม่ต้องเลื่อนหาฟอร์มด้านล่าง</p>
             </div>
           </div>
 
-          {availableActions.length > 0 ? (
-            <>
-              <div className="asset-action-list asset-action-list-priority">
-                {actionLayout.primary && (
-                  <button
-                    type="button"
-                    className={ACTION_BUTTON_CLASSES[actionLayout.primary]}
-                    disabled={actionLoading}
-                    onClick={() => handleSelectAction(actionLayout.primary)}
-                  >
-                    {ACTION_LABELS[actionLayout.primary]}
-                  </button>
-                )}
+          <div className="asset-action-list asset-action-list-priority">
+            {actionLayout.primary && (
+              <button
+                type="button"
+                className={ACTION_BUTTON_CLASSES[actionLayout.primary]}
+                disabled={actionLoading}
+                onClick={() => handleSelectAction(actionLayout.primary)}
+              >
+                {ACTION_LABELS[actionLayout.primary]}
+              </button>
+            )}
 
-                {actionLayout.secondary.map((action) => (
-                  <button
-                    key={action}
-                    type="button"
-                    className={ACTION_BUTTON_CLASSES[action]}
-                    disabled={actionLoading}
-                    onClick={() => handleSelectAction(action)}
-                  >
-                    {ACTION_LABELS[action]}
-                  </button>
-                ))}
-              </div>
+            {actionLayout.secondary.map((action) => (
+              <button
+                key={action}
+                type="button"
+                className={ACTION_BUTTON_CLASSES[action]}
+                disabled={actionLoading}
+                onClick={() => handleSelectAction(action)}
+              >
+                {ACTION_LABELS[action]}
+              </button>
+            ))}
 
-              {actionLayout.more.length > 0 && (
-                <details className="asset-more-actions">
-                  <summary>การดำเนินการเพิ่มเติม</summary>
-                  <div className="asset-action-list asset-more-action-list">
-                    {actionLayout.more.map((action) => (
-                      <button
-                        key={action}
-                        type="button"
-                        className={ACTION_BUTTON_CLASSES[action]}
-                        disabled={actionLoading}
-                        onClick={() => handleSelectAction(action)}
-                      >
-                        {ACTION_LABELS[action]}
-                      </button>
-                    ))}
-                  </div>
-                </details>
-              )}
+            <AssetManagementPanel item={item} onChanged={handleAssetChanged} />
+          </div>
 
-              {(item.current_status === "IN_STOCK" || item.current_status === "IN_USE") && (
-                <div className="asset-bulk-hint">
-                  <strong>ทำหลายเครื่องพร้อมกัน?</strong>
-                  <span>เลือกหลายรายการจาก Asset Explorer แล้วกรอกข้อมูลร่วมเพียงครั้งเดียว</span>
-                  <Link to="/inventory" className="text-link">
-                    ไปเลือกหลายอุปกรณ์ →
-                  </Link>
-                </div>
-              )}
-            </>
-          ) : (
+          {availableActions.length === 0 && (
             <div className="terminal-state">
-              <strong>สิ้นสุด Lifecycle</strong>
-              <span>
-                อุปกรณ์สถานะ {item.current_status} ไม่สามารถทำ Movement เพิ่มได้
-              </span>
+              <span>ไม่มีรายการดำเนินการเพิ่มเติม</span>
             </div>
           )}
         </aside>

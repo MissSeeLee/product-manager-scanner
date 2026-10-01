@@ -1,0 +1,248 @@
+/* AssetOps UX Completion v2 */
+
+.ux-intake-tabs,
+.ux-segmented,
+.ux-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ux-intake-tabs {
+  margin-bottom: 14px;
+}
+
+.ux-editor-card,
+.ux-inline-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.ux-inline-editor {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.ux-inline-editor label {
+  display: grid;
+  gap: 6px;
+}
+
+.ux-inline-editor label > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ux-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ux-danger-editor {
+  border-color: rgba(241, 43, 47, 0.38);
+}
+
+.ux-management-divider {
+  height: 1px;
+  margin: 16px 0;
+  background: var(--border-soft);
+}
+
+.ux-asset-management {
+  margin-top: 14px;
+}
+
+.ux-readonly-note {
+  display: grid;
+  gap: 5px;
+  padding-top: 12px;
+  color: var(--text-muted);
+}
+
+.ux-history-list,
+.ux-activity-list {
+  display: grid;
+}
+
+.ux-history-row,
+.ux-activity-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.ux-history-row:last-child,
+.ux-activity-row:last-child {
+  border-bottom: 0;
+}
+
+.ux-history-row > div:first-child,
+.ux-activity-row > div:first-child,
+.ux-history-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.ux-history-row span,
+.ux-activity-row span,
+.ux-history-meta span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.ux-history-meta {
+  min-width: 150px;
+  text-align: right;
+}
+
+.ux-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ux-toolbar > input {
+  flex: 1;
+}
+
+.ux-inline-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.ux-card-grid,
+.ux-more-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ux-project-card {
+  display: grid;
+  gap: 14px;
+}
+
+.ux-project-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ux-project-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+.ux-project-stats > div {
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+}
+
+.ux-project-stats dt {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.ux-project-stats dd {
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+
+.ux-project-meta {
+  display: grid;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.ux-status-pill {
+  align-self: flex-start;
+  padding: 5px 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.ux-status-active {
+  border-color: rgba(70, 190, 120, 0.35);
+}
+
+.ux-status-cancelled {
+  border-color: rgba(241, 43, 47, 0.35);
+}
+
+.ux-more-card {
+  display: grid;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ux-auth-actor {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.ux-auth-actor span {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.ux-scanner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ux-csv-master-note {
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .ux-card-grid,
+  .ux-more-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ux-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .ux-two-column,
+  .ux-project-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .ux-history-row,
+  .ux-activity-row {
+    flex-direction: column;
+  }
+
+  .ux-history-meta {
+    text-align: left;
+  }
+}

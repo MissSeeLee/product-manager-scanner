@@ -67,22 +67,13 @@ function InventoryForm({ products = [], onSubmit, onCancel, loading = false }) {
     <section className="card intake-panel">
       <div className="card-header">
         <div>
-          <span className="section-kicker">SINGLE ASSET</span>
-          <h2 className="card-title">ลงทะเบียน 1 อุปกรณ์</h2>
-          <p className="page-description">
-            สร้างอุปกรณ์จริงหนึ่งชิ้นและบันทึก RECEIVE เป็นประวัติรายการแรก
-          </p>
+
+          <h2 className="card-title">เพิ่มอุปกรณ์</h2>
+
         </div>
       </div>
 
       <form className="form-grid" onSubmit={handleSubmit}>
-        <div className="form-section form-field-full">
-          <span className="form-step">01</span>
-          <div>
-            <strong>รุ่นสินค้า</strong>
-            <span>เลือกข้อมูลแม่แบบก่อนระบุ Serial Number ของอุปกรณ์จริง</span>
-          </div>
-        </div>
 
         {productMode === "existing" ? (
           <>
@@ -111,7 +102,7 @@ function InventoryForm({ products = [], onSubmit, onCancel, loading = false }) {
                 onClick={() => setProductMode("new")}
                 disabled={loading}
               >
-                + ยังไม่มีรุ่นนี้? สร้างรุ่นสินค้าใหม่
+                + เพิ่มรุ่นใหม่
               </button>
             </div>
           </>
@@ -185,14 +176,6 @@ function InventoryForm({ products = [], onSubmit, onCancel, loading = false }) {
           </>
         )}
 
-        <div className="form-section form-field-full">
-          <span className="form-step">02</span>
-          <div>
-            <strong>ตัวตนอุปกรณ์</strong>
-            <span>Serial Number ต้องไม่ซ้ำกับอุปกรณ์อื่นในระบบ</span>
-          </div>
-        </div>
-
         <div className="form-field">
           <label htmlFor="serialNumber">Serial Number</label>
           <input
@@ -206,7 +189,7 @@ function InventoryForm({ products = [], onSubmit, onCancel, loading = false }) {
         </div>
 
         <div className="form-field">
-          <label htmlFor="currentLocation">ตำแหน่งเริ่มต้น</label>
+          <label htmlFor="currentLocation">สถานที่</label>
           <input
             id="currentLocation"
             value={currentLocation}
@@ -214,14 +197,6 @@ function InventoryForm({ products = [], onSubmit, onCancel, loading = false }) {
             required
             disabled={loading}
           />
-        </div>
-
-        <div className="form-section form-field-full">
-          <span className="form-step">03</span>
-          <div>
-            <strong>การรับเข้า</strong>
-            <span>วันที่รับเข้าเป็นวันที่ของ RECEIVE จริง ไม่ใช่วันที่สร้าง record</span>
-          </div>
         </div>
 
         <div className="form-field">
@@ -236,6 +211,10 @@ function InventoryForm({ products = [], onSubmit, onCancel, loading = false }) {
           />
         </div>
 
+        <details className="basic-advanced form-field-full">
+          {/* ASSETOPS-BASIC-ADVANCED */}
+          <summary>รายละเอียดเพิ่มเติม</summary>
+          <div className="form-grid basic-advanced-grid">
         <div className="form-field">
           <label htmlFor="performedBy">ผู้รับเข้า</label>
           <input
@@ -257,7 +236,7 @@ function InventoryForm({ products = [], onSubmit, onCancel, loading = false }) {
         </div>
 
         <div className="form-field form-field-full">
-          <label htmlFor="inventoryNote">หมายเหตุการรับเข้า</label>
+          <label htmlFor="inventoryNote">หมายเหตุ</label>
           <textarea
             id="inventoryNote"
             rows="3"
@@ -265,14 +244,6 @@ function InventoryForm({ products = [], onSubmit, onCancel, loading = false }) {
             onChange={(event) => setNote(event.target.value)}
             disabled={loading}
           />
-        </div>
-
-        <div className="form-section form-field-full">
-          <span className="form-step">04</span>
-          <div>
-            <strong>การรับประกัน</strong>
-            <span>ไม่บังคับกรอก หากไม่มีข้อมูลสามารถเว้นว่างได้</span>
-          </div>
         </div>
 
         <div className="form-field">
@@ -296,14 +267,15 @@ function InventoryForm({ products = [], onSubmit, onCancel, loading = false }) {
             disabled={loading}
           />
         </div>
-
+          </div>
+        </details>
         <div className="form-actions form-field-full">
           <button type="submit" className="button button-primary" disabled={loading}>
             {loading
-              ? "กำลังลงทะเบียน..."
+              ? "กำลังเพิ่ม..."
               : productMode === "new"
-                ? "สร้างรุ่นและลงทะเบียนอุปกรณ์"
-                : "ลงทะเบียนอุปกรณ์"}
+                ? "สร้างรุ่นและเพิ่มอุปกรณ์"
+                : "เพิ่มอุปกรณ์"}
           </button>
 
           <button

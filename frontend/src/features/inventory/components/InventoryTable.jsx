@@ -51,6 +51,7 @@ function InventoryTable({
   selectedIds = [],
   onToggleSelect,
   onToggleSelectAll,
+  selectionEnabled = true,
 }) {
   if (items.length === 0) {
     return (
@@ -87,20 +88,22 @@ function InventoryTable({
         <table className="data-table asset-table">
           <thead>
             <tr>
-              <th className="asset-select-cell">
-                <input
-                  type="checkbox"
-                  aria-label="เลือกอุปกรณ์ที่ทำรายการได้ทั้งหมดในหน้านี้"
-                  checked={allSelectableSelected}
-                  ref={(element) => {
-                    if (element) {
-                      element.indeterminate = !allSelectableSelected && someSelectableSelected;
-                    }
-                  }}
-                  onChange={() => onToggleSelectAll?.(selectableItems)}
-                  disabled={selectableItems.length === 0}
-                />
-              </th>
+              {selectionEnabled && (
+                <th className="asset-select-cell">
+                  <input
+                    type="checkbox"
+                    aria-label="เลือกอุปกรณ์ที่ทำรายการได้ทั้งหมดในหน้านี้"
+                    checked={allSelectableSelected}
+                    ref={(element) => {
+                      if (element) {
+                        element.indeterminate = !allSelectableSelected && someSelectableSelected;
+                      }
+                    }}
+                    onChange={() => onToggleSelectAll?.(selectableItems)}
+                    disabled={selectableItems.length === 0}
+                  />
+                </th>
+              )}
               <th aria-sort={query.sort === "serial_number" ? (query.order === "asc" ? "ascending" : "descending") : "none"}>
                 <SortButton field="serial_number" query={query} onSort={onSort} />
               </th>
@@ -160,19 +163,21 @@ function InventoryTable({
 
               return (
                 <tr key={item.id} className={selected ? "asset-row-selected" : ""}>
-                  <td className="asset-select-cell">
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      disabled={!selectable}
-                      onChange={() => onToggleSelect?.(item)}
-                      aria-label={
-                        selectable
-                          ? `เลือก ${item.serial_number}`
-                          : `${item.serial_number} อยู่ในสถานะที่ไม่รองรับ Bulk Action`
-                      }
-                    />
-                  </td>
+                  {selectionEnabled && (
+                    <td className="asset-select-cell">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        disabled={!selectable}
+                        onChange={() => onToggleSelect?.(item)}
+                        aria-label={
+                          selectable
+                            ? `เลือก ${item.serial_number}`
+                            : `${item.serial_number} อยู่ในสถานะที่ไม่รองรับ Bulk Action`
+                        }
+                      />
+                    </td>
+                  )}
                   <td>
                     <Link to={`/inventory/${item.id}`} className="serial-link">
                       {item.serial_number}
@@ -209,15 +214,17 @@ function InventoryTable({
           return (
             <article key={item.id} className={selected ? "asset-card asset-card-selected" : "asset-card"}>
               <div className="asset-card-selection">
-                <label className="asset-mobile-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    disabled={!selectable}
-                    onChange={() => onToggleSelect?.(item)}
-                  />
-                  <span>{selectable ? "เลือกทำรายการ" : "สิ้นสุด Lifecycle"}</span>
-                </label>
+                {selectionEnabled && (
+                  <label className="asset-mobile-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      disabled={!selectable}
+                      onChange={() => onToggleSelect?.(item)}
+                    />
+                    <span>{selectable ? "เลือกทำรายการ" : "สิ้นสุด Lifecycle"}</span>
+                  </label>
+                )}
                 <StatusBadge status={item.current_status} />
               </div>
 

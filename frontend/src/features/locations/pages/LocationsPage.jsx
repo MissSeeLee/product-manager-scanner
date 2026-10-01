@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   createLocation,
@@ -9,27 +9,7 @@ import {
 } from "../api/locationsApi";
 
 function usageMessage(error) {
-  const usage = error?.data?.usage;
-
-  if (!usage) {
-    return error?.message || "ไม่สามารถดำเนินการได้";
-  }
-
-  const parts = [];
-
-  if (usage.inventory) {
-    parts.push(`อุปกรณ์ปัจจุบัน ${usage.inventory}`);
-  }
-
-  if (usage.movements) {
-    parts.push(`ประวัติการเคลื่อนไหว ${usage.movements}`);
-  }
-
-  if (usage.projects) {
-    parts.push(`โครงการ ${usage.projects}`);
-  }
-
-  return `${error.message}${parts.length ? ` (${parts.join(", ")})` : ""}`;
+  return error?.message || "ไม่สามารถดำเนินการได้";
 }
 
 function LocationsPage() {
@@ -52,7 +32,7 @@ function LocationsPage() {
     setError("");
 
     try {
-      const result = await getLocations({ includeInactive: true });
+      const result = await getLocations();
       setLocations(Array.isArray(result) ? result : []);
     } catch (requestError) {
       setError(requestError.message || "ไม่สามารถโหลดรายการสถานที่ได้");
@@ -66,9 +46,7 @@ function LocationsPage() {
 
     async function loadInitialLocations() {
       try {
-        const result = await getLocations({
-          includeInactive: true,
-        });
+        const result = await getLocations();
 
         if (!cancelled) {
           setLocations(Array.isArray(result) ? result : []);
@@ -174,10 +152,6 @@ function LocationsPage() {
     const nextActive = !location.is_active;
     const action = nextActive ? "เปิดใช้งาน" : "ปิดใช้งาน";
 
-    if (!window.confirm(`${action} “${location.location_name}” หรือไม่?`)) {
-      return;
-    }
-
     setSubmitting(true);
     setError("");
     setSuccess("");
@@ -194,14 +168,6 @@ function LocationsPage() {
   }
 
   async function handleDelete(location) {
-    if (
-      !window.confirm(
-        `ลบ “${location.location_name}” ถาวรหรือไม่?\n\n` +
-          "ลบถาวรได้เฉพาะสถานที่ที่ไม่เคยถูกใช้งานเท่านั้น",
-      )
-    ) {
-      return;
-    }
 
     setSubmitting(true);
     setError("");
@@ -225,7 +191,7 @@ function LocationsPage() {
           <div className="eyebrow">ASSET OPERATIONS</div>
           <h1>สถานที่</h1>
           <p className="text-muted">
-            จัดการ Location Master สำหรับรับเข้า เบิก คืน ย้าย และเคลม
+            เพิ่ม แก้ไข และปิดใช้งานสถานที่
           </p>
         </div>
       </div>
@@ -244,7 +210,7 @@ function LocationsPage() {
         <section className="card location-create-card">
           <div className="card-header">
             <div>
-              <div className="eyebrow">LOCATION MASTER</div>
+              <div className="eyebrow"></div>
               <h2>เพิ่มสถานที่</h2>
             </div>
           </div>
@@ -283,20 +249,12 @@ function LocationsPage() {
               </button>
             </div>
           </form>
-
-          <div className="location-safety-note">
-            <strong>กฎความปลอดภัย</strong>
-            <span>
-              สถานที่ที่เคยถูกใช้งานจะปิดใช้งานได้ แต่ลบถาวรหรือเปลี่ยนชื่อไม่ได้
-              เพื่อรักษาประวัติอุปกรณ์เดิม
-            </span>
-          </div>
         </section>
 
         <section className="card location-list-card">
           <div className="location-list-header">
             <div>
-              <div className="eyebrow">LOCATION MASTER</div>
+              <div className="eyebrow"></div>
               <h2>สถานที่ทั้งหมด</h2>
             </div>
 
@@ -406,7 +364,7 @@ function LocationsPage() {
                             แก้ไข
                           </button>
 
-                          <button
+                          <button hidden
                             type="button"
                             className="button button-secondary button-small"
                             onClick={() => handleToggle(location)}
@@ -421,7 +379,7 @@ function LocationsPage() {
                             onClick={() => handleDelete(location)}
                             disabled={submitting}
                           >
-                            ลบถาวร
+                            ลบ
                           </button>
                         </div>
                       </>

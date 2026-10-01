@@ -333,7 +333,6 @@ router.delete("/:id", async (req, res) => {
 
     if (currentResult.rowCount === 0) {
       await client.query("ROLLBACK");
-
       return res.status(404).json({
         code: "LOCATION_NOT_FOUND",
         message: "ไม่พบสถานที่ที่ต้องการ",
@@ -344,13 +343,19 @@ router.delete("/:id", async (req, res) => {
     const usage = await getLocationUsage(client, current.location_name);
 
     if (usage.total > 0) {
-      await client.query("ROLLBACK");
+      await client.query(
+        `
+          UPDATE locations
+          SET is_active = FALSE, updated_at = NOW()
+          WHERE id = $1
+        `,
+        [id],
+      );
 
-      return res.status(409).json({
-        code: "LOCATION_IN_USE",
-        message:
-          "สถานที่นี้เคยถูกใช้งานแล้ว จึงลบถาวรไม่ได้ กรุณาใช้ “ปิดใช้งาน” เพื่อรักษาประวัติเดิม",
-        data: { usage },
+      await client.query("COMMIT");
+      return res.status(200).json({
+        message: "ลบสถานที่เรียบร้อย",
+        data: { id, preservedHistory: true },
       });
     }
 
@@ -363,10 +368,9 @@ router.delete("/:id", async (req, res) => {
     );
 
     await client.query("COMMIT");
-
     return res.status(200).json({
-      message: "ลบสถานที่ถาวรเรียบร้อย",
-      data: { id },
+      message: "ลบสถานที่เรียบร้อย",
+      data: { id, preservedHistory: false },
     });
   } catch (error) {
     if (client) {
@@ -378,7 +382,6 @@ router.delete("/:id", async (req, res) => {
     }
 
     console.error("Delete location failed:", error);
-
     return res.status(500).json({
       code: "LOCATION_DELETE_FAILED",
       message: "ไม่สามารถลบสถานที่ได้",

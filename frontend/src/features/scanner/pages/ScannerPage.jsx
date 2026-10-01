@@ -99,158 +99,86 @@ function ScannerPage() {
     <>
       <div className="page-header">
         <div>
-          <h1>Scanner</h1>
-
-          <p className="text-muted">
-            ค้นหาอุปกรณ์ด้วย Barcode, QR Code หรือ Serial Number
-          </p>
+          <h1>สแกนอุปกรณ์</h1>
+          <p className="text-muted">สแกนบาร์โค้ดหรือค้นหาด้วย Serial Number</p>
         </div>
       </div>
 
       {error && <div className="message message-error">{error}</div>}
 
-      {!foundItem && <BarcodeScanner onScan={handleScan} disabled={loading} />}
+      {!foundItem && (
+        <>
+          <section className="card scanner-quick-search">
+            <form className="form-grid" onSubmit={handleSubmit}>
+              <div className="form-field form-field-full">
+                <label htmlFor="scannerSerial">Serial Number</label>
+                <input
+                  id="scannerSerial"
+                  value={serialNumber}
+                  onChange={(event) => {
+                    setSerialNumber(event.target.value);
+                    setFoundItem(null);
+                    setError("");
+                  }}
+                  placeholder="Serial Number"
+                  disabled={loading}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="form-actions form-field-full">
+                <button type="submit" className="button button-primary" disabled={loading}>
+                  {loading ? "กำลังค้นหา..." : "ค้นหา"}
+                </button>
+              </div>
+            </form>
+          </section>
 
-      {lastScan && !foundItem && (
-        <section className="card">
-          <h2>ผลการสแกนล่าสุด</h2>
+          <BarcodeScanner onScan={handleScan} disabled={loading} />
 
-          <div className="scanner-result-grid">
-            <div>
-              <span className="text-muted">ค่าที่อ่านได้</span>
-
-              <strong>{lastScan.value}</strong>
+          {lastScan && !loading && (
+            <div className="scanner-last-value text-muted">
+              สแกนล่าสุด: <strong>{lastScan.value}</strong>
             </div>
-
-            <div>
-              <span className="text-muted">Barcode Format</span>
-
-              <strong>{lastScan.format}</strong>
-            </div>
-
-            <div>
-              <span className="text-muted">สถานะ</span>
-
-              <strong>ไม่พบ Serial นี้ในฐานข้อมูล</strong>
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={handleReset}
-            >
-              สแกนใหม่
-            </button>
-          </div>
-        </section>
+          )}
+        </>
       )}
 
       {foundItem && (
         <section className="card scanner-result-card">
           <div className="card-header">
             <div>
-              <h2>พบอุปกรณ์</h2>
-
-              <p className="text-muted">ตรวจสอบข้อมูลก่อนเปิดรายการ</p>
+              <h2 className="serial-text">{foundItem.serial_number}</h2>
+              <p className="text-muted">
+                {foundItem.product_name || "ไม่ระบุรุ่น"}
+                {foundItem.brand ? ` · ${foundItem.brand}` : ""}
+              </p>
             </div>
-
             <StatusBadge status={foundItem.current_status} />
           </div>
 
           <div className="scanner-result-grid">
             <div>
-              <span className="text-muted">Serial Number</span>
-
-              <strong>{foundItem.serial_number}</strong>
+              <span className="text-muted">สถานที่</span>
+              <strong>{foundItem.current_location || "ไม่ระบุ"}</strong>
             </div>
-
-            <div>
-              <span className="text-muted">Product</span>
-
-              <strong>{foundItem.product_name || "-"}</strong>
-            </div>
-
-            <div>
-              <span className="text-muted">Brand</span>
-
-              <strong>{foundItem.brand || "-"}</strong>
-            </div>
-
-            <div>
-              <span className="text-muted">Part Number</span>
-
-              <strong>{foundItem.part_number || "-"}</strong>
-            </div>
-
-            <div>
-              <span className="text-muted">Location</span>
-
-              <strong>{foundItem.current_location || "-"}</strong>
-            </div>
-
-            {lastScan?.format && (
+            {foundItem.part_number && (
               <div>
-                <span className="text-muted">Barcode Format</span>
-
-                <strong>{lastScan.format}</strong>
+                <span className="text-muted">Part Number</span>
+                <strong>{foundItem.part_number}</strong>
               </div>
             )}
           </div>
 
           <div className="form-actions">
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={handleOpenItem}
-            >
-              เปิดรายละเอียดอุปกรณ์
+            <button type="button" className="button button-primary" onClick={handleOpenItem}>
+              เปิดอุปกรณ์
             </button>
-
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={handleReset}
-            >
+            <button type="button" className="button button-secondary" onClick={handleReset}>
               สแกนใหม่
             </button>
           </div>
         </section>
       )}
-
-      <section className="card">
-        <h2>ค้นหาด้วย Serial Number</h2>
-
-        <form className="form-grid" onSubmit={handleSubmit}>
-          <div className="form-field form-field-full">
-            <label htmlFor="scannerSerial">Serial Number</label>
-
-            <input
-              id="scannerSerial"
-              value={serialNumber}
-              onChange={(event) => {
-                setSerialNumber(event.target.value);
-
-                setFoundItem(null);
-                setError("");
-              }}
-              placeholder="เช่น SN001-UPDATED"
-              disabled={loading}
-            />
-          </div>
-
-          <div className="form-actions form-field-full">
-            <button
-              type="submit"
-              className="button button-primary"
-              disabled={loading}
-            >
-              {loading ? "กำลังค้นหา..." : "ค้นหาอุปกรณ์"}
-            </button>
-          </div>
-        </form>
-      </section>
     </>
   );
 }

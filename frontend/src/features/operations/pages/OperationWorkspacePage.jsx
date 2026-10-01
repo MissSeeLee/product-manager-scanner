@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
@@ -625,8 +625,8 @@ function OperationWorkspacePage() {
             <div className="operation-section-heading">
               <span className="operation-step">1</span>
               <div>
-                <h2 className="card-title">ข้อมูลร่วมของรายการ</h2>
-                <p>กรอกครั้งเดียว ระบบจะใช้กับอุปกรณ์ทุก Serial ในรายการนี้</p>
+                <h2 className="card-title">รายละเอียด</h2>
+
               </div>
             </div>
 
@@ -706,9 +706,7 @@ function OperationWorkspacePage() {
                   required
                   disabled={submitting}
                 />
-                <span className="field-hint">
-                  จัดการรายการที่ <Link to="/locations" className="text-link">สถานที่</Link>
-                </span>
+
               </div>
 
               <div className="form-field">
@@ -721,7 +719,7 @@ function OperationWorkspacePage() {
                   disabled={submitting}
                   autoComplete="name"
                 />
-                <span className="field-hint">ระบบจำค่าล่าสุดไว้ใน Browser เครื่องนี้</span>
+
               </div>
 
               <div className="form-field form-field-full">
@@ -743,7 +741,7 @@ function OperationWorkspacePage() {
               <span className="operation-step">2</span>
               <div>
                 <h2 className="card-title">เพิ่มอุปกรณ์</h2>
-                <p>ค้นหา พิมพ์ Serial จาก Barcode gun หรือเปิดกล้องสแกนต่อเนื่อง</p>
+
               </div>
             </div>
 
@@ -870,11 +868,6 @@ function OperationWorkspacePage() {
             </div>
           </dl>
 
-          <div className="operation-atomic-note">
-            <strong>บันทึกทั้งชุดแบบ All-or-Nothing</strong>
-            <span>ถ้ามี Serial ใดสถานะเปลี่ยนก่อนยืนยัน ระบบจะไม่บันทึกครึ่งชุด</span>
-          </div>
-
           <button
             type="button"
             className="button button-primary operation-confirm-button"
@@ -889,7 +882,7 @@ function OperationWorkspacePage() {
             }
           >
             {submitting
-              ? "กำลังบันทึกทั้งชุด..."
+              ? "กำลังบันทึก..."
               : `${config.submitLabel} ${selectedAssets.length} รายการ`}
           </button>
 

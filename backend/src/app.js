@@ -18,6 +18,10 @@ import operationsRoutes from "./routes/operations.js";
 import projectRoutes from "./routes/projects.js";
 import locationRoutes from "./routes/locations.js";
 import publicRoutes from "./routes/public.js";
+import assetManagementRoutes from "./routes/assetManagement.js";
+import uxManagementRoutes from "./routes/uxManagement.js";
+import activityRoutes from "./routes/activity.js";
+import { uxIntegrityGuard } from "./middleware/uxIntegrity.js";
 
 const app = express();
 
@@ -73,6 +77,7 @@ app.use("/api/public", publicRoutes);
 // --------------------------------------------------
 
 app.use("/api", requireAuth, enforceManagerPermissions);
+app.use("/api", uxIntegrityGuard);
 
 app.get("/api/db-health", async (req, res) => {
   try {
@@ -101,7 +106,10 @@ app.use("/api/users", requireRole("ADMIN"), userRoutes);
 // MANAGER API ROUTES
 // --------------------------------------------------
 
+app.use("/api/ux", uxManagementRoutes);
+app.use("/api/activity", activityRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/inventory-items", assetManagementRoutes);
 app.use("/api/inventory-items", inventoryRoutes);
 app.use("/api/inventory-items", movementRoutes);
 app.use("/api/operations", operationsRoutes);

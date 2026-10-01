@@ -1,0 +1,45 @@
+﻿============================================================
+ AssetOps Runtime Connectivity Diagnostic v1
+============================================================
+Project : C:\Users\artid\Desktop\product-manager-scanner
+Backend : http://127.0.0.1:3001
+Vite    : http://127.0.0.1:5173
+
+[1] TCP listeners
+PASS port 3001 LISTEN pid=7392 address=::
+PASS port 5173 LISTEN pid=62968 address=::1
+PASS port 5433 LISTEN pid=2768 address=127.0.0.1
+
+[2] HTTP probes
+PASS backend /api/health -> HTTP 200
+FAIL Vite proxy /api/health -> HTTP 0; Unable to connect to the remote server
+
+[3] Node processes related to project
+NODE pid=62968 "node"   "C:\Users\artid\Desktop\product-manager-scanner\frontend\node_modules\.bin\\..\vite\bin\vite.js" 
+
+[4] Docker services
+DOCKER product-manager-scanner-adminer-1|Up 14 hours|127.0.0.1:8080->8080/tcp
+DOCKER product-manager-scanner-postgres-1|Up 14 hours (healthy)|127.0.0.1:5433->5432/tcp
+DOCKER mineru-gradio|Up 14 hours|0.0.0.0:7860->7860/tcp, [::]:7860->7860/tcp
+DOCKER anonymous-review-app-postgres-1|Up 14 hours (healthy)|127.0.0.1:5432->5432/tcp
+
+[5] Backend source/startup clues
+SCRIPT dev = node --watch --env-file=../.env src/server.js
+SCRIPT start:local = node --env-file=../.env src/server.js
+SCRIPT start = node src/server.js
+ENTRY candidate: C:\Users\artid\Desktop\product-manager-scanner\backend\src\server.js
+  const port = Number(process.env.PORT || process.env.BACKEND_PORT || 3001);
+  app.listen(port, () => {
+DB env names referenced by backend/src/db.js:
+  DATABASE_URL: shell=NOT_SET
+  POSTGRES_DB: shell=NOT_SET
+  POSTGRES_HOST: shell=NOT_SET
+  POSTGRES_PASSWORD: shell=NOT_SET
+  POSTGRES_PORT: shell=NOT_SET
+  POSTGRES_USER: shell=NOT_SET
+
+[6] Diagnosis
+DIAGNOSIS: Backend is healthy, but Vite proxy is broken or Vite is not running.
+NEXT: Check frontend vite.config proxy and Vite process.
+
+Report: C:\Users\artid\Desktop\product-manager-scanner\qa-reports\runtime-connectivity-20261001-152530.txt

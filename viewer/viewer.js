@@ -1,485 +1,640 @@
 (() => {
   "use strict";
 
+  const app = document.getElementById("app");
+  const overlay = document.getElementById("overlay");
+  const detail = document.getElementById("detail");
+  const closeDrawerButton = document.getElementById("closeDrawer");
+  const refreshButton = document.getElementById("refreshButton");
+  const lastUpdated = document.getElementById("lastUpdated");
+  const pageTitle = document.getElementById("pageTitle");
+  const pageSubtitle = document.getElementById("pageSubtitle");
+  const connectionText = document.getElementById("connectionText");
+
+  const STATUS = {
+    IN_STOCK: "พร้อมใช้งาน",
+    IN_USE: "กำลังใช้งาน",
+    CLAIM: "อยู่ระหว่างเคลม",
+    REPLACED: "เปลี่ยนทดแทนแล้ว",
+    RETIRED: "ปลดระวาง",
+  };
+
+  const MOVEMENT = {
+    RECEIVE: "รับเข้าระบบ",
+    ISSUE: "เบิกไปใช้งาน",
+    RETURN: "รับคืนเข้าคลัง",
+    MOVE: "ย้ายตำแหน่ง",
+    CLAIM: "ส่งเคลม",
+    CLAIM_RETURN: "รับกลับจากเคลม",
+    REPLACED: "เปลี่ยนทดแทน",
+    RETIRE: "ปลดระวาง",
+  };
+
   const state = {
-    assets: [],
-    history: [],
-    recent: [],
-    summary: {},
-    search: "",
-    status: "",
-    location: "",
+    assets: {
+      search: "",
+      status: "",
+      page: 1,
+      limit: 20,
+    },
+    history: {
+      page: 1,
+      limit: 30,
+    },
+    routeRun: 0,
+    lastFocused: null,
   };
 
-  const $ = (id) => document.getElementById(id);
-
-  const els = {
-    refreshButton: $("refreshButton"),
-    lastUpdated: $("lastUpdated"),
-    kpiTotal: $("kpiTotal"),
-    kpiStock: $("kpiStock"),
-    kpiUse: $("kpiUse"),
-    kpiClaim: $("kpiClaim"),
-    kpiTerminal: $("kpiTerminal"),
-    resultMeta: $("resultMeta"),
-    searchInput: $("searchInput"),
-    statusFilter: $("statusFilter"),
-    locationFilter: $("locationFilter"),
-    clearFilters: $("clearFilters"),
-    loadingState: $("loadingState"),
-    errorState: $("errorState"),
-    tableWrap: $("tableWrap"),
-    emptyState: $("emptyState"),
-    assetTableBody: $("assetTableBody"),
-    recentList: $("recentList"),
-    drawerBackdrop: $("drawerBackdrop"),
-    detailDrawer: $("detailDrawer"),
-    drawerSerial: $("drawerSerial"),
-    drawerContent: $("drawerContent"),
-    drawerHistory: $("drawerHistory"),
-    closeDrawer: $("closeDrawer"),
-  };
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+  function el(tag, className = "", text = null) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== null && text !== undefined) node.textContent = String(text);
+    return node;
   }
 
-  function firstValue(object, names, fallback = "") {
-    if (!object || typeof object !== "object") return fallback;
-
-    for (const name of names) {
-      const value = object[name];
-
-      if (value !== undefined && value !== null && String(value).trim() !== "") {
-        return value;
-      }
-    }
-
-    return fallback;
-  }
-
-  function unwrap(payload, collectionNames = []) {
-    let value = payload;
-
-    if (value && typeof value === "object" && "data" in value) {
-      value = value.data;
-    }
-
-    if (Array.isArray(value)) return value;
-
-    if (value && typeof value === "object") {
-      for (const key of collectionNames) {
-        if (Array.isArray(value[key])) return value[key];
-      }
-    }
-
-    return value;
-  }
-
-  async function getJson(path) {
-    const response = await fetch(path, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      throw new Error(`${path} → HTTP ${response.status}`);
-    }
-
-    return response.json();
-  }
-
-  function normalizeAsset(raw) {
-    return {
-      raw,
-      id: firstValue(raw, ["id", "inventory_item_id", "inventoryItemId"], ""),
-      serial: String(firstValue(raw, ["serial_number", "serialNumber", "serial"], "—")),
-      name: String(firstValue(raw, ["product_name", "productName", "model_name", "modelName", "name"], "ไม่ระบุรุ่น")),
-      brand: String(firstValue(raw, ["brand", "manufacturer"], "—")),
-      partNumber: String(firstValue(raw, ["part_number", "partNumber", "sku"], "")),
-      status: String(firstValue(raw, ["current_status", "status"], "UNKNOWN")).toUpperCase(),
-      location: String(firstValue(raw, ["current_location", "location"], "ไม่ระบุตำแหน่ง")),
-      responsible: String(firstValue(raw, ["current_responsible_person", "responsible_person", "responsiblePerson"], "")),
-      project: String(firstValue(raw, ["project_name", "projectName", "project_code", "projectCode"], "")),
-      expectedReturn: firstValue(raw, ["expected_return_date", "expectedReturnDate"], ""),
-      warrantyEnd: firstValue(raw, ["warranty_end", "warrantyEnd"], ""),
-      receivedDate: firstValue(raw, ["received_date", "receivedDate"], ""),
-    };
-  }
-
-  function normalizeMovement(raw) {
-    return {
-      raw,
-      id: firstValue(raw, ["id", "movement_id", "movementId"], ""),
-      assetId: firstValue(raw, ["inventory_item_id", "inventoryItemId", "asset_id", "assetId"], ""),
-      serial: String(firstValue(raw, ["serial_number", "serialNumber", "serial"], "")),
-      type: String(firstValue(raw, ["movement_type", "movementType", "type", "operation_type"], "EVENT")).toUpperCase(),
-      date: firstValue(raw, ["movement_date", "movementDate", "created_at", "createdAt", "operation_date"], ""),
-      from: String(firstValue(raw, ["from_location", "fromLocation"], "")),
-      to: String(firstValue(raw, ["to_location", "toLocation"], "")),
-      note: String(firstValue(raw, ["note", "notes"], "")),
-      operationCode: String(firstValue(raw, ["operation_code", "operationCode", "reference_code", "referenceCode"], "")),
-    };
-  }
-
-  function formatDate(value, withTime = false) {
+  function fmt(value, withTime = false) {
     if (!value) return "—";
-
     const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) return String(value);
-
+    if (Number.isNaN(date.getTime())) return "—";
     return new Intl.DateTimeFormat("th-TH", {
       dateStyle: "medium",
       ...(withTime ? { timeStyle: "short" } : {}),
     }).format(date);
   }
 
-  function statusLabel(status) {
-    const map = {
-      IN_STOCK: "พร้อมใช้งาน",
-      IN_USE: "กำลังใช้งาน",
-      CLAIM: "เคลม",
-      REPLACED: "เปลี่ยนทดแทน",
-      RETIRED: "ปลดระวาง",
-      UNKNOWN: "ไม่ทราบสถานะ",
-    };
-
-    return map[status] || status;
+  function badge(status) {
+    const value = STATUS[status] ? status : "UNKNOWN";
+    return el("span", `status ${value}`, STATUS[status] || status || "ไม่ทราบสถานะ");
   }
 
-  function movementLabel(type) {
-    const map = {
-      RECEIVE: "รับเข้า",
-      ISSUE: "เบิก",
-      RETURN: "คืน",
-      MOVE: "ย้าย",
-      CLAIM: "ส่งเคลม",
-      CLAIM_RETURN: "รับกลับจากเคลม",
-      REPLACED: "เปลี่ยนทดแทน",
-      RETIRE: "ปลดระวาง",
-    };
-
-    return map[type] || type;
+  function setUpdated() {
+    lastUpdated.textContent = `อัปเดตล่าสุด ${new Intl.DateTimeFormat("th-TH", {
+      dateStyle: "medium",
+      timeStyle: "medium",
+    }).format(new Date())}`;
   }
 
-  function statusBadge(status) {
-    const safe = ["IN_STOCK", "IN_USE", "CLAIM", "REPLACED", "RETIRED"].includes(status)
-      ? status
-      : "UNKNOWN";
-
-    return `<span class="status ${safe}">${escapeHtml(statusLabel(status))}</span>`;
+  function setConnection(ok) {
+    connectionText.textContent = ok ? "PUBLIC API ONLINE" : "PUBLIC API ERROR";
+    connectionText.parentElement.classList.toggle("error", !ok);
   }
 
-  function computeCounts() {
-    const counts = {
-      total: state.assets.length,
-      IN_STOCK: 0,
-      IN_USE: 0,
-      CLAIM: 0,
-      REPLACED: 0,
-      RETIRED: 0,
-    };
-
-    for (const asset of state.assets) {
-      if (asset.status in counts) counts[asset.status] += 1;
-    }
-
-    return counts;
-  }
-
-  function renderKpis() {
-    const counts = computeCounts();
-
-    els.kpiTotal.textContent = counts.total.toLocaleString("th-TH");
-    els.kpiStock.textContent = counts.IN_STOCK.toLocaleString("th-TH");
-    els.kpiUse.textContent = counts.IN_USE.toLocaleString("th-TH");
-    els.kpiClaim.textContent = counts.CLAIM.toLocaleString("th-TH");
-    els.kpiTerminal.textContent = (counts.REPLACED + counts.RETIRED).toLocaleString("th-TH");
-  }
-
-  function sortedUnique(values) {
-    return [...new Set(values.filter(Boolean))].sort((a, b) =>
-      String(a).localeCompare(String(b), "th")
-    );
-  }
-
-  function buildFilters() {
-    const currentStatus = els.statusFilter.value;
-    const currentLocation = els.locationFilter.value;
-
-    const statuses = sortedUnique(state.assets.map((item) => item.status));
-    const locations = sortedUnique(state.assets.map((item) => item.location));
-
-    els.statusFilter.innerHTML =
-      `<option value="">ทุกสถานะ</option>` +
-      statuses
-        .map((status) => `<option value="${escapeHtml(status)}">${escapeHtml(statusLabel(status))}</option>`)
-        .join("");
-
-    els.locationFilter.innerHTML =
-      `<option value="">ทุกตำแหน่ง</option>` +
-      locations
-        .map((location) => `<option value="${escapeHtml(location)}">${escapeHtml(location)}</option>`)
-        .join("");
-
-    if (statuses.includes(currentStatus)) els.statusFilter.value = currentStatus;
-    if (locations.includes(currentLocation)) els.locationFilter.value = currentLocation;
-  }
-
-  function filteredAssets() {
-    const query = state.search.trim().toLowerCase();
-
-    return state.assets.filter((asset) => {
-      const searchable = [
-        asset.serial,
-        asset.name,
-        asset.brand,
-        asset.partNumber,
-        asset.location,
-        asset.project,
-        asset.responsible,
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      const matchesSearch = !query || searchable.includes(query);
-      const matchesStatus = !state.status || asset.status === state.status;
-      const matchesLocation = !state.location || asset.location === state.location;
-
-      return matchesSearch && matchesStatus && matchesLocation;
+  async function api(path, options = {}) {
+    const response = await fetch(`/api/public${path}`, {
+      method: options.method || "GET",
+      headers: {
+        Accept: "application/json",
+        ...(options.headers || {}),
+      },
+      cache: "no-store",
     });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = body?.message || `HTTP ${response.status}`;
+      const error = new Error(message);
+      error.status = response.status;
+      error.code = body?.code || "";
+      throw error;
+    }
+    return body;
   }
 
-  function renderTable() {
-    const items = filteredAssets();
+  function setHeader(title, subtitle) {
+    pageTitle.textContent = title;
+    pageSubtitle.textContent = subtitle;
+  }
 
-    els.resultMeta.textContent =
-      `แสดง ${items.length.toLocaleString("th-TH")} จาก ${state.assets.length.toLocaleString("th-TH")} รายการ`;
+  function loading(message = "กำลังโหลดข้อมูล…") {
+    app.replaceChildren();
+    const box = el("div", "state-box loading");
+    const spinner = el("span", "spinner");
+    box.append(spinner, el("span", "", message));
+    app.append(box);
+  }
 
-    els.assetTableBody.innerHTML = items
-      .map(
-        (asset) => `
-          <tr data-asset-id="${escapeHtml(asset.id)}" data-serial="${escapeHtml(asset.serial)}">
-            <td><span class="serial">${escapeHtml(asset.serial)}</span></td>
-            <td>
-              <div class="model-main">${escapeHtml(asset.name)}</div>
-              ${asset.partNumber ? `<div class="model-sub">${escapeHtml(asset.partNumber)}</div>` : ""}
-            </td>
-            <td>${escapeHtml(asset.brand)}</td>
-            <td>${statusBadge(asset.status)}</td>
-            <td>${escapeHtml(asset.location)}</td>
-            <td>${escapeHtml(formatDate(asset.expectedReturn))}</td>
-          </tr>
-        `
-      )
-      .join("");
+  function errorView(error, retry) {
+    setConnection(false);
+    app.replaceChildren();
+    const box = el("section", "state-box error");
+    box.append(
+      el("strong", "", "โหลดข้อมูลไม่สำเร็จ"),
+      el("p", "", error?.message || "ไม่สามารถเชื่อมต่อ Public API ได้"),
+    );
+    if (retry) {
+      const button = el("button", "button secondary", "ลองอีกครั้ง");
+      button.type = "button";
+      button.addEventListener("click", retry);
+      box.append(button);
+    }
+    app.append(box);
+  }
 
-    els.tableWrap.classList.toggle("hidden", items.length === 0);
-    els.emptyState.classList.toggle("hidden", items.length !== 0);
+  function emptyState(message) {
+    const box = el("div", "state-box empty");
+    box.append(el("strong", "", message));
+    return box;
+  }
 
-    for (const row of els.assetTableBody.querySelectorAll("tr")) {
-      row.addEventListener("click", () => {
-        const id = row.dataset.assetId;
-        const serial = row.dataset.serial;
-        const asset =
-          state.assets.find((item) => String(item.id) === String(id)) ||
-          state.assets.find((item) => item.serial === serial);
+  function route() {
+    const value = location.hash.replace(/^#/, "").split("?")[0];
+    return ["overview", "assets", "history"].includes(value) ? value : "overview";
+  }
 
-        if (asset) openDrawer(asset);
-      });
+  function syncNav() {
+    const current = route();
+    for (const link of document.querySelectorAll("[data-route]")) {
+      const active = link.dataset.route === current;
+      link.classList.toggle("active", active);
+      if (active) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
     }
   }
 
-  function renderRecent() {
-    const items = (state.recent.length ? state.recent : state.history).slice(0, 12);
+  function pager(meta, onPage) {
+    const page = Number(meta?.page || 1);
+    const totalPages = Math.max(1, Number(meta?.totalPages || 1));
+    const total = Number(meta?.total || 0);
 
-    if (!items.length) {
-      els.recentList.innerHTML = `<div class="state-box slim">ยังไม่มีประวัติการเคลื่อนไหว</div>`;
-      return;
+    const box = el("div", "pager");
+    const info = el("span", "pager-info", `หน้า ${page} จาก ${totalPages} · ${total.toLocaleString("th-TH")} รายการ`);
+    const actions = el("div", "pager-actions");
+
+    const prev = el("button", "button secondary", "← ก่อนหน้า");
+    prev.type = "button";
+    prev.disabled = page <= 1;
+    prev.addEventListener("click", () => onPage(page - 1));
+
+    const next = el("button", "button secondary", "ถัดไป →");
+    next.type = "button";
+    next.disabled = page >= totalPages;
+    next.addEventListener("click", () => onPage(page + 1));
+
+    actions.append(prev, next);
+    box.append(info, actions);
+    return box;
+  }
+
+  function makeAssetRow(item, compact = false) {
+    const row = el("tr", "clickable");
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.setAttribute("aria-label", `เปิดรายละเอียด ${item.public_code || "อุปกรณ์"}`);
+
+    const codeCell = el("td");
+    codeCell.append(
+      el("strong", "public-code", item.public_code || "—"),
+      el("span", "sub", item.masked_serial || ""),
+    );
+
+    const productCell = el("td");
+    productCell.append(el("strong", "", item.product_name || "—"));
+    const meta = [item.brand, item.part_number, item.category].filter(Boolean).join(" · ");
+    if (meta) productCell.append(el("span", "sub", meta));
+
+    const statusCell = el("td");
+    statusCell.append(badge(item.current_status));
+
+    row.append(codeCell, productCell, statusCell);
+
+    if (!compact) {
+      row.append(el("td", "", fmt(item.received_date)));
     }
 
-    els.recentList.innerHTML = items
-      .map((event) => {
-        const route = [event.from, event.to].filter(Boolean).join(" → ");
+    row.append(el("td", "", fmt(item.last_activity_at, true)));
 
-        return `
-          <div class="activity-item">
-            <span class="activity-dot"></span>
-            <div>
-              <div class="activity-title">
-                ${escapeHtml(movementLabel(event.type))}
-                ${event.serial ? ` · <span class="serial">${escapeHtml(event.serial)}</span>` : ""}
-              </div>
-              <div class="activity-meta">${escapeHtml(formatDate(event.date, true))}</div>
-              ${route ? `<div class="activity-route">${escapeHtml(route)}</div>` : ""}
-            </div>
-          </div>
-        `;
-      })
-      .join("");
+    const open = () => openDetail(item.asset_id, row);
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+
+    return row;
   }
 
-  function detailField(label, value, full = false) {
-    return `
-      <div class="detail-field${full ? " full" : ""}">
-        <span class="detail-label">${escapeHtml(label)}</span>
-        <div class="detail-value">${escapeHtml(value || "—")}</div>
-      </div>
-    `;
+  function assetTable(items, compact = false) {
+    const wrap = el("div", "table-wrap");
+    const table = el("table", "data-table");
+    const head = el("thead");
+    const hr = el("tr");
+
+    const labels = compact
+      ? ["รหัสสาธารณะ", "อุปกรณ์", "สถานะ", "ล่าสุด"]
+      : ["รหัสสาธารณะ", "อุปกรณ์", "สถานะ", "วันที่รับเข้า", "ล่าสุด"];
+
+    for (const label of labels) hr.append(el("th", "", label));
+    head.append(hr);
+
+    const body = el("tbody");
+    for (const item of items) body.append(makeAssetRow(item, compact));
+
+    table.append(head, body);
+    wrap.append(table);
+    return wrap;
   }
 
-  function matchingHistory(asset) {
-    return state.history
-      .filter((event) => {
-        if (event.serial && asset.serial && event.serial === asset.serial) return true;
-        if (event.assetId !== "" && asset.id !== "" && String(event.assetId) === String(asset.id)) return true;
-        return false;
-      })
-      .sort((a, b) => {
-        const aTime = a.date ? new Date(a.date).getTime() : 0;
-        const bTime = b.date ? new Date(b.date).getTime() : 0;
-        return bTime - aTime;
-      });
+  function summaryCard(label, value, className, statusFilter = "") {
+    const card = el("button", `summary-card ${className || ""}`.trim());
+    card.type = "button";
+    card.append(
+      el("span", "summary-label", label),
+      el("strong", "", Number(value || 0).toLocaleString("th-TH")),
+      el("span", "summary-foot", statusFilter || "ทั้งหมด"),
+    );
+    card.addEventListener("click", () => {
+      state.assets.status = statusFilter;
+      state.assets.page = 1;
+      location.hash = "assets";
+    });
+    return card;
   }
 
-  function openDrawer(asset) {
-    els.drawerSerial.textContent = asset.serial;
-
-    els.drawerContent.innerHTML = [
-      detailField("รุ่น / อุปกรณ์", asset.name, true),
-      detailField("Brand", asset.brand),
-      detailField("Part Number", asset.partNumber),
-      detailField("สถานะ", statusLabel(asset.status)),
-      detailField("ตำแหน่ง", asset.location),
-      detailField("โครงการ / งาน", asset.project),
-      detailField("ผู้รับผิดชอบ", asset.responsible),
-      detailField("กำหนดคืน", formatDate(asset.expectedReturn)),
-      detailField("สิ้นสุดประกัน", formatDate(asset.warrantyEnd)),
-      detailField("วันที่รับเข้า", formatDate(asset.receivedDate)),
-    ].join("");
-
-    const history = matchingHistory(asset);
-
-    els.drawerHistory.innerHTML = history.length
-      ? history
-          .map((event) => {
-            const route = [event.from, event.to].filter(Boolean).join(" → ");
-
-            return `
-              <div class="history-item">
-                <div class="history-type">${escapeHtml(movementLabel(event.type))}</div>
-                <div class="history-meta">
-                  ${escapeHtml(formatDate(event.date, true))}
-                  ${event.operationCode ? ` · ${escapeHtml(event.operationCode)}` : ""}
-                </div>
-                ${route ? `<div class="history-note">${escapeHtml(route)}</div>` : ""}
-                ${event.note ? `<div class="history-note">${escapeHtml(event.note)}</div>` : ""}
-              </div>
-            `;
-          })
-          .join("")
-      : `<div class="state-box slim">ไม่พบประวัติสำหรับอุปกรณ์นี้ใน Public Viewer</div>`;
-
-    els.drawerBackdrop.classList.remove("hidden");
-    els.detailDrawer.classList.add("open");
-    els.detailDrawer.setAttribute("aria-hidden", "false");
-  }
-
-  function closeDrawer() {
-    els.drawerBackdrop.classList.add("hidden");
-    els.detailDrawer.classList.remove("open");
-    els.detailDrawer.setAttribute("aria-hidden", "true");
-  }
-
-  async function loadAll() {
-    els.loadingState.classList.remove("hidden");
-    els.errorState.classList.add("hidden");
-    els.refreshButton.disabled = true;
-    els.refreshButton.textContent = "กำลังรีเฟรช…";
+  async function renderOverview() {
+    const run = ++state.routeRun;
+    setHeader("ภาพรวมอุปกรณ์", "สถานะล่าสุดจาก Public API แบบอ่านอย่างเดียว");
+    loading("กำลังโหลดภาพรวม…");
 
     try {
-      const [summaryPayload, assetsPayload, historyPayload, recentPayload] =
-        await Promise.all([
-          getJson("/api/public/summary"),
-          getJson("/api/public/assets"),
-          getJson("/api/public/history"),
-          getJson("/api/public/recent"),
-        ]);
+      const [summaryPayload, recentPayload] = await Promise.all([
+        api("/summary"),
+        api("/recent?limit=8"),
+      ]);
+      if (run !== state.routeRun || route() !== "overview") return;
 
-      const assetRows = unwrap(assetsPayload, ["assets", "items", "results", "rows"]);
-      const historyRows = unwrap(historyPayload, ["history", "movements", "items", "results", "rows"]);
-      const recentRows = unwrap(recentPayload, ["recent", "history", "movements", "items", "results", "rows"]);
-      const summary = unwrap(summaryPayload, ["summary"]);
+      const summary = summaryPayload.data || {};
+      const recent = Array.isArray(recentPayload.data) ? recentPayload.data : [];
 
-      state.assets = (Array.isArray(assetRows) ? assetRows : []).map(normalizeAsset);
-      state.history = (Array.isArray(historyRows) ? historyRows : []).map(normalizeMovement);
-      state.recent = (Array.isArray(recentRows) ? recentRows : []).map(normalizeMovement);
-      state.summary = summary && typeof summary === "object" ? summary : {};
+      const content = document.createDocumentFragment();
 
-      renderKpis();
-      buildFilters();
-      renderTable();
-      renderRecent();
+      const intro = el("section", "hero-panel");
+      const introText = el("div");
+      introText.append(
+        el("span", "section-kicker", "PUBLIC READ MODEL"),
+        el("h2", "", "ตรวจสอบสถานะอุปกรณ์ได้โดยไม่เปิดสิทธิ์แก้ไข"),
+        el("p", "", "ข้อมูลในหน้านี้ถูกจำกัดเฉพาะข้อมูลที่อนุญาตให้เปิดเผย และเชื่อมผ่าน Public API แบบ Read-only"),
+      );
+      intro.append(introText);
+      content.append(intro);
 
-      els.loadingState.classList.add("hidden");
-      els.lastUpdated.textContent =
-        `อัปเดตล่าสุด ${new Intl.DateTimeFormat("th-TH", {
-          dateStyle: "medium",
-          timeStyle: "medium",
-        }).format(new Date())}`;
+      const grid = el("section", "summary-grid");
+      grid.append(
+        summaryCard("อุปกรณ์ทั้งหมด", summary.total, "total", ""),
+        summaryCard("พร้อมใช้งาน", summary.in_stock, "stock", "IN_STOCK"),
+        summaryCard("กำลังใช้งาน", summary.in_use, "use", "IN_USE"),
+        summaryCard("อยู่ระหว่างเคลม", summary.claim, "claim", "CLAIM"),
+        summaryCard("เปลี่ยนทดแทน", summary.replaced, "terminal", "REPLACED"),
+        summaryCard("ปลดระวาง", summary.retired, "terminal", "RETIRED"),
+      );
+      content.append(grid);
+
+      const panel = el("section", "panel");
+      const heading = el("div", "panel-heading");
+      const left = el("div");
+      left.append(
+        el("span", "section-kicker", "RECENTLY UPDATED"),
+        el("h2", "", "อุปกรณ์ที่มีความเคลื่อนไหวล่าสุด"),
+      );
+      const all = el("a", "text-link", "ดูอุปกรณ์ทั้งหมด →");
+      all.href = "#assets";
+      heading.append(left, all);
+      panel.append(heading);
+
+      if (recent.length) panel.append(assetTable(recent, true));
+      else panel.append(emptyState("ยังไม่มีข้อมูลอุปกรณ์"));
+
+      content.append(panel);
+      app.replaceChildren(content);
+      setConnection(true);
+      setUpdated();
     } catch (error) {
-      els.loadingState.classList.add("hidden");
-      els.tableWrap.classList.add("hidden");
-      els.emptyState.classList.add("hidden");
-      els.errorState.textContent =
-        `โหลดข้อมูล Public Viewer ไม่สำเร็จ: ${error instanceof Error ? error.message : String(error)}`;
-      els.errorState.classList.remove("hidden");
-      els.lastUpdated.textContent = "เชื่อมต่อข้อมูลไม่สำเร็จ";
-    } finally {
-      els.refreshButton.disabled = false;
-      els.refreshButton.textContent = "รีเฟรชข้อมูล";
+      if (run !== state.routeRun) return;
+      errorView(error, renderOverview);
     }
   }
 
-  els.searchInput.addEventListener("input", (event) => {
-    state.search = event.target.value;
-    renderTable();
+  async function renderAssets({ focusSearch = false } = {}) {
+    const run = ++state.routeRun;
+    setHeader("รายการอุปกรณ์", "ค้นหา กรองสถานะ และเปิดรายละเอียดอุปกรณ์แบบ Read-only");
+    loading("กำลังโหลดรายการอุปกรณ์…");
+
+    const params = new URLSearchParams({
+      page: String(state.assets.page),
+      limit: String(state.assets.limit),
+    });
+    if (state.assets.search) params.set("search", state.assets.search);
+    if (state.assets.status) params.set("status", state.assets.status);
+
+    try {
+      const payload = await api(`/assets?${params.toString()}`);
+      if (run !== state.routeRun || route() !== "assets") return;
+
+      const items = Array.isArray(payload.data) ? payload.data : [];
+      const meta = payload.meta || { page: 1, totalPages: 1, total: items.length };
+
+      const toolbar = el("section", "filter-panel");
+
+      const searchWrap = el("label", "filter-field search");
+      searchWrap.append(el("span", "", "ค้นหา"));
+      const search = el("input", "input");
+      search.type = "search";
+      search.placeholder = "รหัสสาธารณะ / Serial ที่ปิดบัง / รุ่น / Brand / Part Number";
+      search.autocomplete = "off";
+      search.value = state.assets.search;
+      searchWrap.append(search);
+
+      const statusWrap = el("label", "filter-field");
+      statusWrap.append(el("span", "", "สถานะ"));
+      const select = el("select", "select");
+      [
+        ["", "ทุกสถานะ"],
+        ["IN_STOCK", "พร้อมใช้งาน"],
+        ["IN_USE", "กำลังใช้งาน"],
+        ["CLAIM", "อยู่ระหว่างเคลม"],
+        ["REPLACED", "เปลี่ยนทดแทนแล้ว"],
+        ["RETIRED", "ปลดระวาง"],
+      ].forEach(([value, label]) => {
+        const option = el("option", "", label);
+        option.value = value;
+        option.selected = value === state.assets.status;
+        select.append(option);
+      });
+      statusWrap.append(select);
+
+      const clear = el("button", "button secondary", "ล้างตัวกรอง");
+      clear.type = "button";
+      clear.disabled = !state.assets.search && !state.assets.status;
+
+      const count = el("div", "filter-count", `${Number(meta.total || 0).toLocaleString("th-TH")} รายการ`);
+
+      toolbar.append(searchWrap, statusWrap, clear, count);
+
+      let timer = null;
+      search.addEventListener("input", () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          state.assets.search = search.value.trim();
+          state.assets.page = 1;
+          renderAssets({ focusSearch: true });
+        }, 350);
+      });
+
+      select.addEventListener("change", () => {
+        state.assets.status = select.value;
+        state.assets.page = 1;
+        renderAssets();
+      });
+
+      clear.addEventListener("click", () => {
+        state.assets.search = "";
+        state.assets.status = "";
+        state.assets.page = 1;
+        renderAssets({ focusSearch: true });
+      });
+
+      const panel = el("section", "panel");
+      if (items.length) {
+        panel.append(
+          assetTable(items),
+          pager(meta, (page) => {
+            state.assets.page = page;
+            renderAssets();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }),
+        );
+      } else {
+        panel.append(emptyState("ไม่พบอุปกรณ์ที่ตรงกับเงื่อนไข"));
+      }
+
+      app.replaceChildren(toolbar, panel);
+      setConnection(true);
+      setUpdated();
+
+      if (focusSearch) {
+        requestAnimationFrame(() => {
+          search.focus();
+          const length = search.value.length;
+          search.setSelectionRange(length, length);
+        });
+      }
+    } catch (error) {
+      if (run !== state.routeRun) return;
+      errorView(error, () => renderAssets());
+    }
+  }
+
+  function historyTable(items) {
+    const wrap = el("div", "table-wrap");
+    const table = el("table", "data-table");
+    const head = el("thead");
+    const hr = el("tr");
+    ["วันเวลา", "รายการ", "รหัสสาธารณะ", "อุปกรณ์"].forEach((label) => hr.append(el("th", "", label)));
+    head.append(hr);
+
+    const body = el("tbody");
+    for (const item of items) {
+      const row = el("tr", item.asset_id ? "clickable" : "");
+      if (item.asset_id) {
+        row.tabIndex = 0;
+        row.setAttribute("role", "button");
+      }
+      row.append(
+        el("td", "", fmt(item.movement_date, true)),
+        el("td", "", MOVEMENT[item.movement_type] || item.movement_type || "—"),
+      );
+
+      const code = el("td");
+      code.append(
+        el("strong", "public-code", item.public_code || "—"),
+        el("span", "sub", item.masked_serial || ""),
+      );
+      row.append(code, el("td", "", item.product_name || "—"));
+
+      if (item.asset_id) {
+        const open = () => openDetail(item.asset_id, row);
+        row.addEventListener("click", open);
+        row.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            open();
+          }
+        });
+      }
+      body.append(row);
+    }
+
+    table.append(head, body);
+    wrap.append(table);
+    return wrap;
+  }
+
+  async function renderHistory() {
+    const run = ++state.routeRun;
+    setHeader("ประวัติการเคลื่อนไหว", "เหตุการณ์ย้อนหลังที่อนุญาตให้แสดงใน Public Viewer");
+    loading("กำลังโหลดประวัติ…");
+
+    try {
+      const payload = await api(`/history?page=${state.history.page}&limit=${state.history.limit}`);
+      if (run !== state.routeRun || route() !== "history") return;
+
+      const items = Array.isArray(payload.data) ? payload.data : [];
+      const meta = payload.meta || { page: 1, totalPages: 1, total: items.length };
+      const panel = el("section", "panel");
+
+      const heading = el("div", "panel-heading");
+      const left = el("div");
+      left.append(
+        el("span", "section-kicker", "PUBLIC HISTORY"),
+        el("h2", "", "ประวัติอุปกรณ์"),
+        el("p", "muted", "ไม่เปิดเผยผู้ปฏิบัติงาน โครงการ หรือข้อมูลภายใน"),
+      );
+      heading.append(left);
+      panel.append(heading);
+
+      if (items.length) {
+        panel.append(
+          historyTable(items),
+          pager(meta, (page) => {
+            state.history.page = page;
+            renderHistory();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }),
+        );
+      } else {
+        panel.append(emptyState("ยังไม่มีประวัติการเคลื่อนไหว"));
+      }
+
+      app.replaceChildren(panel);
+      setConnection(true);
+      setUpdated();
+    } catch (error) {
+      if (run !== state.routeRun) return;
+      errorView(error, renderHistory);
+    }
+  }
+
+  function field(label, value) {
+    const box = el("div", "detail-field");
+    box.append(el("span", "detail-label", label));
+    if (value instanceof Node) box.append(value);
+    else box.append(el("strong", "", value || "—"));
+    return box;
+  }
+
+  async function openDetail(id, sourceElement = null) {
+    if (!id) return;
+    state.lastFocused = sourceElement || document.activeElement;
+
+    overlay.hidden = false;
+    document.body.classList.add("drawer-open");
+    detail.replaceChildren(loadingNode("กำลังโหลดรายละเอียด…"));
+    closeDrawerButton.focus();
+
+    try {
+      const [assetPayload, historyPayload] = await Promise.all([
+        api(`/assets/${encodeURIComponent(id)}`),
+        api(`/assets/${encodeURIComponent(id)}/history`),
+      ]);
+
+      const asset = assetPayload.data || {};
+      const history = Array.isArray(historyPayload.data) ? historyPayload.data : [];
+
+      const header = el("section", "detail-summary");
+      header.append(
+        el("div", "public-code large", asset.public_code || "—"),
+        el("h3", "", asset.product_name || "ไม่ระบุอุปกรณ์"),
+        el("p", "muted", [asset.brand, asset.part_number, asset.category].filter(Boolean).join(" · ") || "—"),
+      );
+
+      const grid = el("section", "detail-grid");
+      grid.append(
+        field("สถานะ", badge(asset.current_status)),
+        field("Serial", asset.masked_serial),
+        field("วันที่รับเข้า", fmt(asset.received_date)),
+        field("ความเคลื่อนไหวล่าสุด", fmt(asset.last_activity_at, true)),
+      );
+
+      const historySection = el("section", "detail-history");
+      historySection.append(el("h3", "", "ประวัติการเคลื่อนไหว"));
+      const timeline = el("ol", "timeline");
+
+      for (const movement of history) {
+        const item = el("li");
+        item.append(
+          el("strong", "", MOVEMENT[movement.movement_type] || movement.movement_type || "เหตุการณ์"),
+          el("span", "", fmt(movement.movement_date, true)),
+        );
+        timeline.append(item);
+      }
+      if (!history.length) timeline.append(el("li", "empty-timeline", "ยังไม่มีประวัติ"));
+      historySection.append(timeline);
+
+      detail.replaceChildren(header, grid, historySection);
+    } catch (error) {
+      detail.replaceChildren();
+      const box = el("div", "state-box error");
+      box.append(
+        el("strong", "", "โหลดรายละเอียดไม่สำเร็จ"),
+        el("p", "", error?.message || "ไม่สามารถโหลดรายละเอียดได้"),
+      );
+      detail.append(box);
+    }
+  }
+
+  function loadingNode(message) {
+    const box = el("div", "state-box loading");
+    box.append(el("span", "spinner"), el("span", "", message));
+    return box;
+  }
+
+  function closeDetail() {
+    if (overlay.hidden) return;
+    overlay.hidden = true;
+    document.body.classList.remove("drawer-open");
+    if (state.lastFocused && typeof state.lastFocused.focus === "function") {
+      state.lastFocused.focus();
+    }
+    state.lastFocused = null;
+  }
+
+  function renderRoute() {
+    syncNav();
+    window.scrollTo({ top: 0, behavior: "auto" });
+    const current = route();
+
+    if (current === "assets") return renderAssets();
+    if (current === "history") return renderHistory();
+    return renderOverview();
+  }
+
+  refreshButton.addEventListener("click", async () => {
+    refreshButton.disabled = true;
+    const old = refreshButton.textContent;
+    refreshButton.textContent = "กำลังรีเฟรช…";
+    try {
+      await renderRoute();
+    } finally {
+      refreshButton.disabled = false;
+      refreshButton.textContent = old;
+    }
   });
 
-  els.statusFilter.addEventListener("change", (event) => {
-    state.status = event.target.value;
-    renderTable();
+  closeDrawerButton.addEventListener("click", closeDetail);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) closeDetail();
   });
-
-  els.locationFilter.addEventListener("change", (event) => {
-    state.location = event.target.value;
-    renderTable();
-  });
-
-  els.clearFilters.addEventListener("click", () => {
-    state.search = "";
-    state.status = "";
-    state.location = "";
-    els.searchInput.value = "";
-    els.statusFilter.value = "";
-    els.locationFilter.value = "";
-    renderTable();
-  });
-
-  els.refreshButton.addEventListener("click", loadAll);
-  els.closeDrawer.addEventListener("click", closeDrawer);
-  els.drawerBackdrop.addEventListener("click", closeDrawer);
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeDrawer();
+    if (event.key === "Escape" && !overlay.hidden) closeDetail();
   });
 
-  loadAll();
+  window.addEventListener("hashchange", renderRoute);
+
+  if (!location.hash || !["#overview", "#assets", "#history"].includes(location.hash)) {
+    location.hash = "overview";
+  } else {
+    renderRoute();
+  }
 })();

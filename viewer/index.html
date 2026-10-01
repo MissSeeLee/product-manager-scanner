@@ -4,230 +4,161 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#0a1020" />
   <title>AskMe AssetOps · Public Viewer</title>
   <link rel="icon" href="./askme-logo.png" />
   <link rel="stylesheet" href="./viewer.css" />
 </head>
 <body>
-  <div class="app-layout">
+  <div class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-brand">
+      <a class="brand" href="#overview" aria-label="AskMe AssetOps Public Viewer">
         <img
-          class="askme-logo"
+          class="brand-logo"
           src="./askme-logo.png"
           alt="AskMe Solutions & Consultants Co., Ltd."
         />
-        <div class="product-lockup">
-          <div class="product-name">AssetOps</div>
-          <div class="product-subtitle">Enterprise Asset Management</div>
+      </a>
+
+      <nav class="nav" aria-label="เมนู Public Viewer">
+        <div class="nav-group">
+          <span class="nav-section-label">PUBLIC VIEWER</span>
+
+          <a class="nav-link" href="#overview" data-route="overview">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="3" width="7" height="4" rx="1.5"></rect>
+                <rect x="14" y="11" width="7" height="10" rx="1.5"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+              </svg>
+            </span>
+            <span>ภาพรวม</span>
+          </a>
+
+          <a class="nav-link" href="#assets" data-route="assets">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                <path d="M7 9h10"></path>
+                <path d="M7 13h6"></path>
+                <path d="M17 13h.01"></path>
+              </svg>
+            </span>
+            <span>อุปกรณ์</span>
+          </a>
+
+          <a class="nav-link" href="#history" data-route="history">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 12a8 8 0 1 0 2.34-5.66"></path>
+                <path d="M4 4v5h5"></path>
+                <path d="M12 8v4l3 2"></path>
+              </svg>
+            </span>
+            <span>ประวัติการเคลื่อนไหว</span>
+          </a>
         </div>
-      </div>
-
-      <div class="viewer-chip">
-        <span class="viewer-chip-dot"></span>
-        PUBLIC VIEWER
-      </div>
-
-      <nav class="sidebar-nav" aria-label="เมนู Public Viewer">
-        <a class="nav-item active" href="#overview">
-          <span class="nav-icon">⌂</span>
-          <span>ภาพรวม</span>
-        </a>
-        <a class="nav-item" href="#assets">
-          <span class="nav-icon">▦</span>
-          <span>รายการอุปกรณ์</span>
-        </a>
-        <a class="nav-item" href="#activity">
-          <span class="nav-icon">↻</span>
-          <span>ความเคลื่อนไหว</span>
-        </a>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="readonly-panel">
-          <div class="readonly-title">
-            <span class="readonly-dot"></span>
-            READ ONLY
-          </div>
-          <p>ข้อมูลสำหรับตรวจสอบเท่านั้น ไม่มีสิทธิ์เบิก คืน ย้าย เคลม แก้ไข หรือลบข้อมูล</p>
+        <span class="system-indicator" aria-hidden="true"></span>
+        <div>
+          <strong>Public Read-only</strong>
+          <span>เปิดดูข้อมูลที่อนุญาตเท่านั้น</span>
         </div>
       </div>
     </aside>
 
-    <div class="main-shell">
+    <main class="app-main">
       <header class="topbar">
-        <div>
-          <div class="eyebrow">ASKME · IT ASSET OPERATIONS</div>
-          <h1>Public Asset Viewer</h1>
-          <p>มุมมองสำหรับตรวจสอบสถานะและประวัติอุปกรณ์แบบอ่านอย่างเดียว</p>
+        <div class="topbar-copy">
+          <span class="topbar-eyebrow">Asset Operations · Public</span>
+          <h1 id="pageTitle" class="topbar-title">Public Asset Viewer</h1>
+          <p id="pageSubtitle" class="topbar-subtitle">กำลังเตรียมข้อมูล…</p>
         </div>
 
         <div class="topbar-actions">
-          <div class="readonly-badge">
-            <span class="readonly-dot"></span>
-            READ ONLY
+          <div class="readonly-badge" title="Public Viewer ไม่มีสิทธิ์แก้ไขข้อมูล">
+            <span class="readonly-dot" aria-hidden="true"></span>
+            <span id="connectionText">PUBLIC API</span>
           </div>
-          <button id="refreshButton" class="button primary" type="button">
-            รีเฟรชข้อมูล
+
+          <button id="refreshButton" class="button button-primary" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11a8 8 0 1 0 2 5"></path>
+              <path d="M20 4v7h-7"></path>
+            </svg>
+            <span>รีเฟรช</span>
           </button>
         </div>
       </header>
 
-      <main class="content">
-        <section id="overview" class="status-strip">
-          <div>
-            <strong>AskMe AssetOps Public Viewer</strong>
-            <span>ข้อมูลจาก Public API และฐานข้อมูล Read-only</span>
-          </div>
-          <div id="lastUpdated" class="last-updated">กำลังโหลด…</div>
-        </section>
+      <div class="page-container">
+        <main id="app" class="viewer-page" tabindex="-1" aria-live="polite"></main>
 
-        <section class="kpi-grid" aria-label="สรุปสถานะอุปกรณ์">
-          <article class="kpi-card">
-            <div class="kpi-icon total">▦</div>
-            <div>
-              <span class="kpi-label">อุปกรณ์ทั้งหมด</span>
-              <strong id="kpiTotal">—</strong>
-              <span class="kpi-foot">SERIAL NUMBER</span>
-            </div>
-          </article>
+        <footer class="footer">
+          <span>AskMe Solutions & Consultants Co., Ltd.</span>
+          <span id="lastUpdated">—</span>
+        </footer>
+      </div>
+    </main>
 
-          <article class="kpi-card">
-            <div class="kpi-icon stock">✓</div>
-            <div>
-              <span class="kpi-label">พร้อมใช้งาน</span>
-              <strong id="kpiStock">—</strong>
-              <span class="kpi-foot">IN_STOCK</span>
-            </div>
-          </article>
+    <nav class="mobile-bottom-nav" aria-label="เมนู Public Viewer บนมือถือ">
+      <a href="#overview" data-route="overview" class="mobile-nav-link">
+        <span class="mobile-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="3" width="7" height="4" rx="1.5"></rect>
+            <rect x="14" y="11" width="7" height="10" rx="1.5"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          </svg>
+        </span>
+        <span>ภาพรวม</span>
+      </a>
 
-          <article class="kpi-card">
-            <div class="kpi-icon use">↗</div>
-            <div>
-              <span class="kpi-label">กำลังใช้งาน</span>
-              <strong id="kpiUse">—</strong>
-              <span class="kpi-foot">IN_USE</span>
-            </div>
-          </article>
+      <a href="#assets" data-route="assets" class="mobile-nav-link">
+        <span class="mobile-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+            <path d="M7 9h10"></path>
+            <path d="M7 13h6"></path>
+            <path d="M17 13h.01"></path>
+          </svg>
+        </span>
+        <span>อุปกรณ์</span>
+      </a>
 
-          <article class="kpi-card">
-            <div class="kpi-icon claim">!</div>
-            <div>
-              <span class="kpi-label">อยู่ระหว่างเคลม</span>
-              <strong id="kpiClaim">—</strong>
-              <span class="kpi-foot">CLAIM</span>
-            </div>
-          </article>
-
-          <article class="kpi-card">
-            <div class="kpi-icon terminal">×</div>
-            <div>
-              <span class="kpi-label">สิ้นสุดการใช้งาน</span>
-              <strong id="kpiTerminal">—</strong>
-              <span class="kpi-foot">REPLACED / RETIRED</span>
-            </div>
-          </article>
-        </section>
-
-        <section class="workspace-grid">
-          <section id="assets" class="panel main-panel">
-            <div class="panel-heading">
-              <div>
-                <span class="section-kicker">ASSET EXPLORER</span>
-                <h2>รายการอุปกรณ์</h2>
-                <p id="resultMeta" class="muted">กำลังโหลดข้อมูล…</p>
-              </div>
-              <div class="panel-mode">VIEW ONLY</div>
-            </div>
-
-            <div class="filters">
-              <label class="search-field">
-                <span>ค้นหา</span>
-                <input id="searchInput" type="search" placeholder="Serial / รุ่น / Brand / Part Number / Location" autocomplete="off" />
-              </label>
-
-              <label>
-                <span>สถานะ</span>
-                <select id="statusFilter">
-                  <option value="">ทุกสถานะ</option>
-                </select>
-              </label>
-
-              <label>
-                <span>ตำแหน่ง</span>
-                <select id="locationFilter">
-                  <option value="">ทุกตำแหน่ง</option>
-                </select>
-              </label>
-
-              <button id="clearFilters" class="button secondary" type="button">ล้างตัวกรอง</button>
-            </div>
-
-            <div id="loadingState" class="state-box">กำลังโหลดข้อมูลจาก AssetOps…</div>
-            <div id="errorState" class="state-box error hidden"></div>
-
-            <div id="tableWrap" class="table-wrap hidden">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Serial Number</th>
-                    <th>รุ่น / อุปกรณ์</th>
-                    <th>Brand</th>
-                    <th>สถานะ</th>
-                    <th>ตำแหน่ง</th>
-                    <th>กำหนดคืน</th>
-                  </tr>
-                </thead>
-                <tbody id="assetTableBody"></tbody>
-              </table>
-            </div>
-
-            <div id="emptyState" class="state-box hidden">
-              ไม่พบอุปกรณ์ที่ตรงกับตัวกรอง
-            </div>
-          </section>
-
-          <aside id="activity" class="panel activity-panel">
-            <div class="panel-heading compact">
-              <div>
-                <span class="section-kicker">RECENT ACTIVITY</span>
-                <h2>ความเคลื่อนไหวล่าสุด</h2>
-              </div>
-            </div>
-            <div id="recentList" class="activity-list">
-              <div class="state-box slim">กำลังโหลด…</div>
-            </div>
-          </aside>
-        </section>
-      </main>
-    </div>
+      <a href="#history" data-route="history" class="mobile-nav-link">
+        <span class="mobile-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 12a8 8 0 1 0 2.34-5.66"></path>
+            <path d="M4 4v5h5"></path>
+            <path d="M12 8v4l3 2"></path>
+          </svg>
+        </span>
+        <span>ประวัติ</span>
+      </a>
+    </nav>
   </div>
 
-  <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
-  <aside id="detailDrawer" class="detail-drawer" aria-hidden="true">
-    <div class="drawer-header">
-      <div>
-        <span class="section-kicker">ASSET DETAIL</span>
-        <h2 id="drawerSerial">—</h2>
+  <div id="overlay" class="overlay" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+      <div class="drawer-header">
+        <div>
+          <span class="section-kicker">PUBLIC ASSET DETAIL</span>
+          <h2 id="drawerTitle">รายละเอียดอุปกรณ์</h2>
+        </div>
+        <button id="closeDrawer" class="icon-button" type="button" aria-label="ปิดรายละเอียด">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6 6 18"></path>
+          </svg>
+        </button>
       </div>
-      <button id="closeDrawer" class="icon-button" type="button" aria-label="ปิด">×</button>
-    </div>
-
-    <div class="drawer-readonly-note">
-      <span class="readonly-dot"></span>
-      รายละเอียดนี้เป็นมุมมองแบบ Read-only
-    </div>
-
-    <div id="drawerContent" class="drawer-content"></div>
-
-    <div class="drawer-section">
-      <div class="drawer-section-heading">
-        <h3>ประวัติการเคลื่อนไหว</h3>
-        <span class="panel-mode">VIEW ONLY</span>
-      </div>
-      <div id="drawerHistory" class="history-list"></div>
-    </div>
-  </aside>
+      <div id="detail" class="drawer-body"></div>
+    </aside>
+  </div>
 
   <script src="./viewer.js" defer></script>
 </body>

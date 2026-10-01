@@ -985,3 +985,25 @@ input[type="radio"] {
   gap: 8px;
   margin-top: 18px;
 }
+
+/* ASSETOPS-BASIC-FORMS-v1 */
+.basic-advanced {
+  border: 0;
+  padding: 0;
+  margin: 2px 0 4px;
+}
+
+.basic-advanced > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-muted, #94a3b8);
+  padding: 8px 0;
+}
+
+.basic-advanced[open] > summary {
+  margin-bottom: 12px;
+}
+
+.basic-advanced-grid {
+  margin-top: 4px;
+}

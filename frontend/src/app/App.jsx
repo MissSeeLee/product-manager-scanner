@@ -8,7 +8,8 @@ const desktopNavigation = [
     items: [
       { to: "/", end: true, label: "ภาพรวม", icon: "dashboard" },
       { to: "/inventory", label: "อุปกรณ์", icon: "assets" },
-      { to: "/operations", label: "เบิก / คืน", icon: "operations" },
+      { to: "/operations", label: "งานอุปกรณ์", icon: "operations" },
+      { to: "/activity", label: "ประวัติกิจกรรม", icon: "activity" },
       { to: "/projects", label: "โครงการ / งาน", icon: "projects" },
       { to: "/scanner", label: "สแกน", icon: "scan", roles: ["ADMIN", "OPERATOR"] },
     ],
@@ -32,17 +33,21 @@ const desktopNavigation = [
 const mobileNavigation = [
   { to: "/", end: true, label: "ภาพรวม", icon: "dashboard" },
   { to: "/inventory", label: "อุปกรณ์", icon: "assets" },
-  { to: "/operations", label: "เบิก/คืน", icon: "operations" },
+  { to: "/operations", label: "งาน", icon: "operations" },
   { to: "/scanner", label: "สแกน", icon: "scan", roles: ["ADMIN", "OPERATOR"] },
+  { to: "/more", label: "เพิ่มเติม", icon: "more" },
 ];
 
 const pageTitles = [
   { match: /^\/$/, title: "ภาพรวมระบบ" },
   { match: /^\/inventory\/[^/]+$/, title: "รายละเอียดอุปกรณ์" },
+  { match: /^\/inventory\/intake/, title: "นำอุปกรณ์เข้าระบบ" },
   { match: /^\/inventory/, title: "อุปกรณ์" },
   { match: /^\/operations\/new/, title: "ทำรายการหลายอุปกรณ์" },
   { match: /^\/operations\/[^/]+$/, title: "รายละเอียดการทำรายการ" },
-  { match: /^\/operations/, title: "เบิก / คืน" },
+  { match: /^\/operations/, title: "งานอุปกรณ์" },
+  { match: /^\/activity/, title: "ประวัติกิจกรรม" },
+  { match: /^\/more/, title: "เพิ่มเติม" },
   { match: /^\/projects\/[^/]+$/, title: "รายละเอียดโครงการ" },
   { match: /^\/projects/, title: "โครงการ / งาน" },
   { match: /^\/products/, title: "รุ่นสินค้า" },
@@ -143,6 +148,23 @@ function Icon({ name }) {
     );
   }
 
+  if (name === "activity") {
+    return (
+      <svg {...common}>
+        <path d="M4 12h4l2-5 4 10 2-5h4" />
+        <path d="M4 4v16h16" />
+      </svg>
+    );
+  }
+  if (name === "more") {
+    return (
+      <svg {...common}>
+        <circle cx="5" cy="12" r="1" />
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="19" cy="12" r="1" />
+      </svg>
+    );
+  }
   if (name === "account") {
     return (
       <svg {...common}>

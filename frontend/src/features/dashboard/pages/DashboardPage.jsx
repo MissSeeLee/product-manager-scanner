@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { getInventorySummary } from "../../inventory/api/inventoryApi";
 import { getOperationsSummary } from "../../operations/api/operationsApi";
 import { OPERATION_CONFIG } from "../../operations/operationConfig";
+import { useCan } from "../../auth/capabilities";
 import { formatDateTime } from "../../../shared/lib/formatters";
 import {
   FeedbackMessage,
@@ -11,6 +12,7 @@ import {
 } from "../../../shared/components/PageState";
 
 function DashboardPage() {
+  const canOperate = useCan("operations.execute");
   const [summary, setSummary] = useState({
     total: 0,
     IN_STOCK: 0,
@@ -78,17 +80,24 @@ function DashboardPage() {
           </p>
         </div>
 
-        <div className="hero-actions dashboard-quick-actions">
-          <Link to="/operations/new?type=ISSUE" className="button button-primary">
-            + เบิกอุปกรณ์
-          </Link>
-          <Link to="/operations/new?type=RETURN" className="button button-secondary">
-            รับคืน
-          </Link>
-          <Link to="/scanner" className="button button-secondary">
-            สแกน
-          </Link>
-        </div>
+        {canOperate ? (
+          <div className="hero-actions dashboard-quick-actions">
+            <Link to="/operations/new?type=ISSUE" className="button button-primary">
+              + เบิกอุปกรณ์
+            </Link>
+            <Link to="/operations/new?type=RETURN" className="button button-secondary">
+              รับคืน
+            </Link>
+            <Link to="/scanner" className="button button-secondary">
+              สแกน
+            </Link>
+          </div>
+        ) : (
+          <div className="ux-readonly-note">
+            <strong>โหมดอ่านอย่างเดียว</strong>
+            <span>ดูสถานะและประวัติได้ โดยระบบจะไม่แสดงปุ่มทำรายการที่บัญชีนี้ใช้ไม่ได้</span>
+          </div>
+        )}
       </div>
 
       <FeedbackMessage type="error">{error}</FeedbackMessage>

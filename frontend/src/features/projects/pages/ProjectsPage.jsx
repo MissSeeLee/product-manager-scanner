@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 
 import { createProject, getProjects } from "../api/projectsApi";
@@ -119,9 +119,6 @@ function ProjectsPage() {
       {showForm && (
         <section className="card project-create-card">
           <h2 className="card-title">สร้างโครงการหรืองาน</h2>
-          <p className="project-form-intro">
-            ค่าเหล่านี้จะถูกเติมอัตโนมัติเมื่อต้องเบิกอุปกรณ์เข้าโครงการ ลดการกรอกข้อมูลซ้ำ
-          </p>
 
           <form className="form-grid" onSubmit={handleSubmit}>
             <div className="form-field">
@@ -280,25 +277,7 @@ function projectMgmtRows(result) {
 }
 
 function projectMgmtError(error) {
-  const usage = error?.data?.usage;
-
-  if (!usage) return error.message;
-
-  const details = [];
-
-  if (usage.activeAssets) {
-    details.push(`อุปกรณ์ยังใช้งาน ${usage.activeAssets}`);
-  }
-
-  if (usage.operations) {
-    details.push(`Operation ${usage.operations}`);
-  }
-
-  if (usage.movements) {
-    details.push(`Movement ${usage.movements}`);
-  }
-
-  return `${error.message}${details.length ? ` (${details.join(", ")})` : ""}`;
+  return error?.message || "ไม่สามารถดำเนินการได้";
 }
 
 function ProjectManagementPanel() {
@@ -451,10 +430,6 @@ function ProjectManagementPanel() {
     const next = selected.status === "ACTIVE" ? "CLOSED" : "ACTIVE";
     const label = next === "CLOSED" ? "ปิดงาน" : "เปิดงานอีกครั้ง";
 
-    if (!window.confirm(`${label} “${selected.project_name}” หรือไม่?`)) {
-      return;
-    }
-
     setBusy(true);
     setError("");
     setSuccess("");
@@ -480,15 +455,6 @@ function ProjectManagementPanel() {
   async function remove() {
     if (!selected) return;
 
-    if (
-      !window.confirm(
-        `ลบ “${selected.project_name}” ถาวรหรือไม่?\n\n` +
-          "ลบถาวรได้เฉพาะโครงการที่ยังไม่เคยถูกใช้งาน",
-      )
-    ) {
-      return;
-    }
-
     setBusy(true);
     setError("");
     setSuccess("");
@@ -513,10 +479,10 @@ function ProjectManagementPanel() {
     <section className="card project-admin-panel">
       <div className="project-admin-head">
         <div>
-          <div className="eyebrow">PROJECT MANAGEMENT</div>
+          <div className="eyebrow"></div>
           <h2>จัดการโครงการ / งาน</h2>
           <p className="text-muted">
-            แก้ไข ปิดงาน เปิดงานอีกครั้ง และลบโครงการที่ยังไม่เคยถูกใช้งาน
+
           </p>
         </div>
       </div>
@@ -716,16 +682,11 @@ function ProjectManagementPanel() {
                   onClick={remove}
                   disabled={busy}
                 >
-                  ลบถาวร
+                  ลบ
                 </button>
               </div>
             </>
           ) : null}
-
-          <div className="project-admin-note">
-            โครงการที่เคยมีการเบิก คืน ย้าย หรือมีอุปกรณ์อ้างอิง
-            จะลบถาวรไม่ได้ เพื่อรักษา Audit History
-          </div>
         </>
       )}
     </section>
