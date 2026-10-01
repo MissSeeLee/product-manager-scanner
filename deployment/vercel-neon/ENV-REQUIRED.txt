@@ -1,0 +1,31 @@
+﻿AssetOps production environment variable names
+Generated from CURRENT local source. No secret values are stored here.
+
+Recommended on Vercel:
+NODE_ENV=production
+ASSETOPS_TRUST_PROXY=1
+DATABASE_URL=<Neon pooled PostgreSQL connection string>
+
+Variables referenced by current backend source:
+ASSETOPS_SECURE_COOKIES
+BACKEND_PORT
+DATABASE_URL
+NODE_ENV
+PORT
+POSTGRES_DB
+POSTGRES_HOST
+POSTGRES_PASSWORD
+POSTGRES_PORT
+POSTGRES_USER
+PUBLIC_DATABASE_SSL
+PUBLIC_DATABASE_URL
+PUBLIC_POSTGRES_DB
+PUBLIC_POSTGRES_HOST
+PUBLIC_POSTGRES_PASSWORD
+PUBLIC_POSTGRES_PORT
+PUBLIC_POSTGRES_USER
+
+IMPORTANT:
+- If publicDb.js references separate read-only DB credentials, configure those too.
+- Do not expose PostgreSQL, Adminer, or a raw Express port to the Internet.
+- Keep frontend API requests relative (/api/...), so auth cookies stay same-origin.

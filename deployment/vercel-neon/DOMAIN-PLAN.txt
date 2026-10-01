@@ -1,0 +1,19 @@
+﻿AssetOps domain plan
+
+Manager/API:
+https://assetops.artip.site
+- React/Vite frontend
+- Express API under /api/*
+- Same origin, so no production CORS split is required
+
+Public Viewer:
+https://viewer.artip.site
+- Static Viewer project
+- Only /api/public/* is proxied to https://assetops.artip.site/api/public/*
+- Admin/manager APIs are not proxied by the Viewer project
+
+Z.com:
+- Keep domain registration at Z.com
+- Add the exact DNS records shown by Vercel Project Settings -> Domains
+- For a subdomain, Vercel normally asks for a CNAME to a project-specific target
+- Do not guess the CNAME target; copy the value Vercel shows for your project
